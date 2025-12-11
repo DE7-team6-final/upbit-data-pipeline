@@ -4,6 +4,7 @@ Upbit WebSocket 스트리밍 + REST 배치 수집을 기반으로
 실시간 이상변동 알림 시스템을 구축하는 팀 프로젝트입니다.
 
 📁 Directory Structure
+```markdown
 upbit-data-pipeline/
 ├── streaming/         # 실시간 WebSocket → Redpanda → (추후 GCS)
 │   ├── producer/
@@ -17,6 +18,7 @@ upbit-data-pipeline/
 ├── infra/             # AWS/GCP 인프라 (추가 예정)
 ├── samples/           # 샘플 JSONL 데이터 (추가 예정)
 └── .github/           # Issue/PR 템플릿 & CI
+```
 
 🚀 Current Progress
 
