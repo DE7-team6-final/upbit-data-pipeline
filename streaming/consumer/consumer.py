@@ -15,6 +15,7 @@ GCS_BUCKET_NAME="upbit-ticker-test"
 
 BATCH_SIZE=1000
 FLUSH_INTERVAL=60
+LATENCY_THRESHOLD_MS = 1000
 
 
 # Kafka Consumer 설정
@@ -35,8 +36,8 @@ class GCSUploder:
         file_content = "\n".join([json.dumps(d, ensure_ascii=False) for d in data_list])
 
         now=datetime.now()
-        folder_path=now.strftime("raw/ticker/year=%Y/month=%m/day=%d")
-        file_name = f"{now.strftime('%H%M%S')}_{str(uuid.uuid4())[:8]}.json"
+        folder_path=now.strftime("ticker/dt=%Y-%m-%d")
+        file_name = f"ticker_{now.strftime('%Y%m%d_%H%M')}.json"
         blob_path = f"{folder_path}/{file_name}"
 
         #업로드
@@ -85,7 +86,8 @@ def main():
                 # 지연 계산
                 if "timestamp" in data:
                     latency = int(time.time() * 1000) - data["timestamp"]
-                    print(f"MK: {market_name} | Price: {data.get('trade_price')} | Latency: {latency}ms")
+                    if latency >= LATENCY_THRESHOLD_MS:
+                        print(f"MK: {market_name} | Price: {data.get('trade_price')} | Latency: {latency}ms")
 
                 buffer.append(data)
 
