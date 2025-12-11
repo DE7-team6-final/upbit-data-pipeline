@@ -21,7 +21,7 @@ from confluent_kafka import Producer
 
 BROKER = "localhost:9092"
 TOPIC = "upbit-ticks"
-CODES: List[str] = ["KRW-BTC", "KRW-ETH", "KRW-XRP"]
+CODES: List[str] = ["KRW-BTC", "KRW-ETH", "KRW-XRP", "KRW-SOL"]
 
 KAFKA_CONF = {
     "bootstrap.servers": BROKER,
