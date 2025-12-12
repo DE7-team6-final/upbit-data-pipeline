@@ -37,7 +37,7 @@ KAFKA_CONF = {
     "bootstrap.servers": BROKER,
 
     # Reliability vs Speed (ideal for real-time ticker data)
-    "enable.idempotence": True,      # Prevents duplicates during retry
+    "enable.idempotence": False,      # Disabled because idempotence requires acks='all'; for low-latency streaming we keep acks='1'
     "acks": "1",                      # Faster than "all", acceptable for market ticks
     "retries": 5,
     "retry.backoff.ms": 200,
