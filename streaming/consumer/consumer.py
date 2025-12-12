@@ -10,7 +10,7 @@ from google.cloud import storage
 BROKER = "localhost:19092"  # Redpanda/Kafka 브로커 주소
 TOPIC = "upbit-ticks"       # Producer가 전송하는 토픽 이름
 GROUP_ID = "upbit-consumer-group-1"  # Consumer 그룹 ID (동시 소비 제어용)
-GCS_BUCKET_NAME="upbit-ticker-test"
+GCS_BUCKET_NAME="upbit-streaming"
 
 
 BATCH_SIZE=1000
@@ -24,7 +24,7 @@ CONFIG = {
     "group.id": GROUP_ID,
     "auto.offset.reset": "earliest",  # 처음 실행 시 가장 처음(offset=0)부터 읽음
 }
-class GCSUploder:
+class GCSUploader:
     def __init__(self, bucket_name):
         self.client=storage.Client()
         self.bucket=self.client.bucket(bucket_name)
@@ -37,7 +37,7 @@ class GCSUploder:
 
         now=datetime.now()
         folder_path=now.strftime("ticker/dt=%Y-%m-%d")
-        file_name = f"ticker_{now.strftime('%Y%m%d_%H%M')}.json"
+        file_name = f"ticker_{now.strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex}.jsonl"
         blob_path = f"{folder_path}/{file_name}"
 
         #업로드
@@ -49,7 +49,7 @@ def main():
     consumer = Consumer(CONFIG)
     consumer.subscribe([TOPIC])  
 
-    uploader=GCSUploder(GCS_BUCKET_NAME)
+    uploader=GCSUploader(GCS_BUCKET_NAME)
 
     buffer= []
     last_flush_time=time.time()
@@ -82,10 +82,9 @@ def main():
                 if "stream_time" not in data:
                     data["stream_time"] = int(time.time()*1000)
                 
-
                 # 지연 계산
-                if "timestamp" in data:
-                    latency = int(time.time() * 1000) - data["timestamp"]
+                if "stream_time" in data:
+                    latency = int(time.time() * 1000) - data["stream_time"]
                     if latency >= LATENCY_THRESHOLD_MS:
                         print(f"MK: {market_name} | Price: {data.get('trade_price')} | Latency: {latency}ms")
 
