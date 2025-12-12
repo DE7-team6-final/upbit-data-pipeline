@@ -19,7 +19,7 @@ import websockets
 from confluent_kafka import Producer
 
 
-BROKER = "localhost:9092"
+BROKER = "localhost:19092"
 TOPIC = "upbit-ticks"
 CODES: List[str] = ["KRW-BTC", "KRW-ETH", "KRW-XRP", "KRW-SOL"]
 
