@@ -145,32 +145,67 @@ def send_slack(webhook: str, message: str):
     Send Slack message.
     If webhook is empty, print to stdout (dry-run).
     """
-    # TODO: implement slack sender (Copilot OK)
-    pass
+    if not webhook:
+        print(f"DRY-RUN Slack message: {message}")
+        return
 
+    payload = {"text": message}
+    response = requests.post(webhook, json=payload, timeout=5)
+    if response.status_code != 200:
+        raise RuntimeError(f"Slack notification failed: {response.text}")
 
 # =========================
 # Alert Worker
 # =========================
 class AlertWorker:
     def __init__(self, bucket: str, prefix: str, slack_webhook: str):
-        # TODO: initialize GCS client and state
-        pass
+        self.bucket = bucket
+        self.prefix = prefix
+        self.slack_webhook = slack_webhook
+
+        self.client = storage.Client()
+        self.aggregator = MinuteAggregator()
+
+        # market -> last alert timestamp (epoch seconds)
+        self.cooldowns: Dict[str, float] = {}
 
     def in_cooldown(self, market: str) -> bool:
         # TODO: cooldown check
-        pass
+        last_alert = self.cooldowns.get(market)
+        if last_alert is None:
+            return False
+        return last_alert > time.time() - COOLDOWN_SECONDS
 
     def set_cooldown(self, market: str):
         # TODO: set cooldown
-        pass
+        self.cooldowns[market] = time.time()
 
     def detect_and_alert(self, market: str, bar: dict):
         """
         Compare current bar vs SMA and send Slack alert if needed.
         """
-        # TODO: detection logic (OR condition)
-        pass
+        # get SMA for market
+        # if SMA not ready, return
+        # calculate price change rate and volume ratio
+        # if price OR volume condition met and not in cooldown:
+        #   print alert (dry-run)
+        #   set cooldown
+        sma = self.aggregator.get_sma(market)
+        if sma is None:
+            return
+        avg_price, avg_volume = sma
+
+        # calculate price change rate and volume ratio
+        price_change = (bar["close_price"] - avg_price) / avg_price
+        volume_ratio = bar["volume"] / avg_volume
+
+        # if price OR volume condition met and not in cooldown:
+        if (abs(price_change) >= PRICE_THRESHOLD or volume_ratio >= VOLUME_MULTIPLIER) \
+                and not self.in_cooldown(market):
+            #   print alert (dry-run)
+            print(f"ALERT: {market} - {bar} (price_change: {price_change}, volume_ratio: {volume_ratio})")
+            #   set cooldown
+            self.set_cooldown(market)
 
     def run(self):
         """
