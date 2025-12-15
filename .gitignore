@@ -1,0 +1,21 @@
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+.venv/
+
+# Environment variables
+.env
+
+# OS files
+.DS_Store
+
+# Editor settings
+.vscode/
+.idea/
+
+# Logs
+*.log
