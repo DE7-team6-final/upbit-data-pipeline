@@ -163,11 +163,15 @@ class AlertWorker:
         self.prefix = prefix
         self.slack_webhook = slack_webhook
 
-        self.client = storage.Client()
         self.aggregator = MinuteAggregator()
 
-        # market -> last alert timestamp (epoch seconds)
+        # market -> last alert timestamp
         self.cooldowns: Dict[str, float] = {}
+
+        # GCS client is optional (skip in dry-run)
+        self.client = None
+        if bucket != "dry-run":
+            self.client = storage.Client()
 
     def in_cooldown(self, market: str) -> bool:
         # TODO: cooldown check
@@ -209,14 +213,28 @@ class AlertWorker:
 
     def run(self):
         """
-        Main loop:
-        - poll GCS
-        - read new JSONL objects
-        - ingest ticker events
-        - detect anomalies
+        Dry-run main loop using fake ticker events.
         """
-        # TODO: main loop
-        pass
+        print("AlertWorker dry-run started")
+
+        fake_events = [
+            {"market": "KRW-BTC", "timestamp": 1700000000000, "trade_price": 50000000, "trade_volume": 1.2},
+            {"market": "KRW-BTC", "timestamp": 1700000060000, "trade_price": 50100000, "trade_volume": 0.8},
+            {"market": "KRW-BTC", "timestamp": 1700000120000, "trade_price": 52000000, "trade_volume": 5.0},
+            {"market": "KRW-BTC", "timestamp": 1700000180000, "trade_price": 52100000, "trade_volume": 6.0},
+            {"market": "KRW-BTC", "timestamp": 1700000240000, "trade_price": 60000000, "trade_volume": 7.0},
+            {"market": "KRW-BTC", "timestamp": 1700000300000, "trade_price": 70000000, "trade_volume": 20.0},
+        ]
+
+        for event in fake_events:
+            bar = self.aggregator.ingest(
+                market=event["market"],
+                ts_ms=event["timestamp"],
+                price=event["trade_price"],
+                volume=event["trade_volume"],
+            )
+            if bar:
+                self.detect_and_alert(event["market"], bar)
 
 
 # =========================
