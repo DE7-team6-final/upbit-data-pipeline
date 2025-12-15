@@ -79,8 +79,7 @@ def main():
                 data = json.loads(raw_value)
                 market_name = data.get("code", "Unknown")
 
-                if "stream_time" not in data:
-                    data["stream_time"] = int(time.time()*1000)
+                data["stream_time"] = int(time.time() * 1000)    
                 
                 # 지연 계산
                 if "stream_time" in data:
