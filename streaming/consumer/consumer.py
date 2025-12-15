@@ -86,7 +86,11 @@ def main():
                 if "stream_time" in data:
                     latency = int(time.time() * 1000) - data["stream_time"]
                     if latency >= LATENCY_THRESHOLD_MS:
-                        print(f"MK: {market_name} | Price: {data.get('trade_price')} | Latency: {latency}ms")
+                        print(
+                            f"MK: {market_name} | "
+                              f"Price: {data.get('trade_price')} | "
+                              f"Latency: {latency}ms"
+                        )
 
                 buffer.append(data)
 
