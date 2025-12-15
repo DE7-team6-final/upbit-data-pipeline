@@ -1,5 +1,5 @@
 [tool.ruff]
-line-length = 100
+line-length = 130
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
