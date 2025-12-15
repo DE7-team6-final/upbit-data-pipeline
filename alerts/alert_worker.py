@@ -84,16 +84,58 @@ class MinuteAggregator:
         Returns:
             finalized bar dict when minute changes, otherwise None
         """
-        # TODO: implement 1-minute aggregation logic
-        pass
+                
+        # build 1-minute bar per market
+        # - minute_key = ts_ms // 60000
+        # - first time seeing market -> init state
+        # - same minute -> update close price and add volume
+        # - minute changed -> finalize previous bar and return it
+
+        min_key = minute_key(ts_ms)
+        if market not in self.current_minute:
+            self.current_minute[market] = min_key
+            self.current_close[market] = price
+            self.current_volume[market] = volume
+            return None
+        
+        if min_key == self.current_minute[market]:
+            self.current_close[market] = price
+            self.current_volume[market] += volume
+            return None
+        
+        finalized_bar = {
+            "market": market,
+            "minute": self.current_minute[market],
+            "close_price": self.current_close[market],
+            "volume": self.current_volume[market],
+        }
+
+        # store finalized bar
+        self.history[market].append(finalized_bar)
+
+        # reset for new minute
+        self.current_minute[market] = min_key
+        self.current_close[market] = price
+        self.current_volume[market] = volume
+
+        return finalized_bar
+        
 
     def get_sma(self, market: str) -> Optional[tuple]:
         """
         Return (avg_price, avg_volume) over last WINDOW_MINUTES bars.
         """
-        # TODO: calculate SMA
-        pass
-
+        # return None if not enough bars
+        # calculate average close price and average volume
+        # return (avg_price, avg_volume)
+        if len(self.history[market]) < WINDOW_MINUTES:
+            return None
+        
+        bars = self.history[market]
+        avg_price = sum(bar["close_price"] for bar in bars) / len(bars)
+        avg_volume = sum(bar["volume"] for bar in bars) / len(bars)
+        
+        return (avg_price, avg_volume)
 
 # =========================
 # Slack notifier
