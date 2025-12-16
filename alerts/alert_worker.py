@@ -172,6 +172,32 @@ class AlertWorker:
         self.client = None
         if bucket != "dry-run":
             self.client = storage.Client()
+    
+    def list_latest_jsonl_blobs(self, limit: int = 1) -> list:
+        """
+        List latest JSONL blobs from GCS prefix.
+        """
+        if not self.client:
+            return []
+
+        blobs = self.client.list_blobs(self.bucket, prefix=self.prefix)
+        jsonl_blobs = [blob for blob in blobs if blob.name.endswith(".jsonl")]
+        # sort by updated time descending
+        sorted_blobs = sorted(jsonl_blobs, key=lambda b: b.updated, reverse=True)
+        return sorted_blobs[:limit]
+    
+    def read_jsonl_blob(self, blob_name: str, max_lines: int = 2000) -> list[dict]:
+        """
+        Read JSONL blob from GCS and return list of dicts.
+        """
+        if not self.client:
+            return []
+
+        blob = self.client.bucket(self.bucket).blob(blob_name)
+        content = blob.download_as_text()
+        lines = content.strip().splitlines()[:max_lines]
+        records = [json.loads(line) for line in lines]
+        return records
 
     def in_cooldown(self, market: str) -> bool:
         # TODO: cooldown check
@@ -235,6 +261,29 @@ class AlertWorker:
             )
             if bar:
                 self.detect_and_alert(event["market"], bar)
+
+    def run_gcs_once(self):
+        """
+        One iteration of GCS-based processing.
+        """
+        blobs = self.list_latest_jsonl_blobs(limit=1)
+        if not blobs:
+            print("No JSONL blobs found")
+            return
+
+        latest_blob = blobs[0]
+        print(f"Processing blob: {latest_blob.name}")
+
+        records = self.read_jsonl_blob(latest_blob.name, max_lines=2000)
+        for record in records:
+            bar = self.aggregator.ingest(
+                market=record["code"],
+                ts_ms=record["trade_timestamp"],
+                price=record["trade_price"],
+                volume=record["trade_volume"],
+            )
+            if bar:
+                self.detect_and_alert(record["code"], bar)
 
 
 # =========================
