@@ -198,6 +198,85 @@ class AlertWorker:
         lines = content.strip().splitlines()[:max_lines]
         records = [json.loads(line) for line in lines]
         return records
+    
+        # checkpoint helpers
+    CHECKPOINT_FILE = ".alert_worker_checkpoint"
+
+    def save_checkpoint(self, blob_name: str):
+        """
+        Save current state as a checkpoint.
+        """
+        with open(self.CHECKPOINT_FILE, "w") as f:
+            f.write(blob_name)
+
+    def load_checkpoint(self) -> Optional[str]:
+        """
+        Load state from the latest checkpoint.
+        """
+        try:
+            with open(self.CHECKPOINT_FILE, "r") as f:
+                return f.read().strip()
+        except FileNotFoundError:
+            return None
+
+    def list_unprocessed_blobs(self, limit: int = 3):
+        """
+        List unprocessed blobs since last checkpoint.
+        """
+        if not self.client:
+            return []
+
+        blobs = self.client.list_blobs(self.bucket, prefix=self.prefix)
+        jsonl_blobs = [blob for blob in blobs if blob.name.endswith(".jsonl")]
+
+        # sort by blob name (chronological order encoded in filename)
+        sorted_blobs = sorted(jsonl_blobs, key=lambda b: b.name)
+
+        checkpoint = self.load_checkpoint()
+        unprocessed = []
+
+        for blob in sorted_blobs:
+            if checkpoint is None or blob.name > checkpoint:
+                unprocessed.append(blob)
+            if len(unprocessed) >= limit:
+                break
+            
+        return unprocessed
+    
+    def run_gcs_loop(self):
+        """
+        Main loop using GCS blobs.
+        """
+        print("AlertWorker GCS loop started")
+
+        while True:
+            unprocessed_blobs = self.list_unprocessed_blobs(limit=3)
+            if not unprocessed_blobs:
+                print("No new JSONL blobs found, sleeping...")
+                time.sleep(POLL_SECONDS)
+                continue
+
+            for blob in unprocessed_blobs:
+                print(f"Processing blob: {blob.name}")
+                try:
+                    records = self.read_jsonl_blob(blob.name, max_lines=2000)
+                    for record in records:
+                        bar = self.aggregator.ingest(
+                            market=record["code"],
+                            ts_ms=record["trade_timestamp"],
+                            price=record["trade_price"],
+                            volume=record["trade_volume"],
+                        )
+                        if bar:
+                            self.detect_and_alert(record["code"], bar)
+
+                    # save checkpoint after processing blob
+                    self.save_checkpoint(blob.name)
+                
+                except Exception as e:
+                    print(f"Failed processing blob {blob.name}: {e}")
+
+            time.sleep(POLL_SECONDS)
 
     def in_cooldown(self, market: str) -> bool:
         # TODO: cooldown check
@@ -284,6 +363,8 @@ class AlertWorker:
             )
             if bar:
                 self.detect_and_alert(record["code"], bar)
+
+
 
 
 # =========================
