@@ -1,2 +1,5 @@
 websockets
 confluent-kafka
+
+google-cloud-storage
+requests
