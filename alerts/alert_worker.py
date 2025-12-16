@@ -198,6 +198,7 @@ class AlertWorker:
         lines = content.strip().splitlines()[:max_lines]
         records = [json.loads(line) for line in lines]
         return records
+<<<<<<< HEAD
     
         # checkpoint helpers
     CHECKPOINT_FILE = ".alert_worker_checkpoint"
@@ -277,6 +278,8 @@ class AlertWorker:
                     print(f"Failed processing blob {blob.name}: {e}")
 
             time.sleep(POLL_SECONDS)
+=======
+>>>>>>> origin/dev
 
     def in_cooldown(self, market: str) -> bool:
         # TODO: cooldown check
@@ -364,8 +367,11 @@ class AlertWorker:
             if bar:
                 self.detect_and_alert(record["code"], bar)
 
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> origin/dev
 
 # =========================
 # Entrypoint
