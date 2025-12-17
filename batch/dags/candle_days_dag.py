@@ -1,8 +1,8 @@
 from airflow import DAG
 from airflow.decorators import task
 
-from CandlePlugin import transform_and_load_to_s3
-from CandlePlugin import BASE_URL, MARKETS, DEFAULT_PARAMS
+from BatchPlugin import transform_and_load_to_s3
+from BatchPlugin import BASE_URL, MARKETS, DEFAULT_PARAMS
 
 from datetime import datetime
 import requests
