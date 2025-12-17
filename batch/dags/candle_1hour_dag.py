@@ -27,7 +27,7 @@ with DAG(
     @task
     def extract():
         today = datetime.today().strftime('%Y-%m-%dT00:00:00')
-        url = BASE_URL + 'minutes/5'
+        url = BASE_URL + 'candles/minutes/60'
         market = MARKETS.copy()
         params = DEFAULT_PARAMS.copy()
         params['to'] = today

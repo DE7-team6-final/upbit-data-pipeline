@@ -26,7 +26,7 @@ with DAG(
 
     @task
     def extract():
-        url = BASE_URL + 'minutes/5'
+        url = BASE_URL + 'candles/minutes/5'
         market = MARKETS.copy()
         params = DEFAULT_PARAMS.copy()
         params['count'] = 144

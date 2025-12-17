@@ -41,7 +41,7 @@ with DAG(
     @task
     def extract(count):
         today = datetime.today().strftime('%Y-%m-%dT00:00:00')
-        url = BASE_URL + 'days'
+        url = BASE_URL + 'candles/days'
         market = MARKETS.copy()
         params = DEFAULT_PARAMS.copy()
         params['to'] = today
