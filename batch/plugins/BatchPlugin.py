@@ -11,7 +11,7 @@ import io
     캔들 데이터 수집 DAG에 공통적으로 사용되는 요소들
 '''
 
-BASE_URL = 'https://api.upbit.com/v1/candles/'
+BASE_URL = 'https://api.upbit.com/v1/'
 MARKETS = ['KRW-BTC', 'KRW-ETH', 'KRW-XRP', 'KRW-SOL']
 DEFAULT_PARAMS = {
     'market': None,

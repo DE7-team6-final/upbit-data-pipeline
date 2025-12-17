@@ -19,7 +19,7 @@ with DAG(
     """
         Airflow DAG: Upbit Trades Raw Ingest (fetch_trades -> S3)
         체결 데이터는 하루에 대략 200,000건 내외를 가지고 있습니다.
-        많은 용량으로 인한 메모리 사용량 부족/비용 문제로 10,000개를 가져옵니다.
+        많은 용량으로 인한 메모리 사용량 부족/비용 문제로 20,000개를 가져옵니다.
         
         어제의 날짜를 가져와 표준 시간 0시(한국 9시)를 기준으로
         최근 20,000개의 체결 데이터를 수집합니다.
@@ -68,6 +68,7 @@ with DAG(
                 raise e
             all_market_data = all_market_data + market_data
             logging.info(f'Fetch Complete. Coin name: {m}')
+            time.sleep(1)
         
         logging.info(f'Fetch Task Complete.')
         return all_market_data
