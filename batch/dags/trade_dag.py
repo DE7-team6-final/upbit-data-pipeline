@@ -12,7 +12,7 @@ import time
 with DAG(
     dag_id="trades_ingest",
     start_date=datetime(2025, 12, 17),
-    schedule='34 * * * *',
+    schedule='34 0 * * *',
     catchup=False,
     tags=["upbit", "trades", "raw"],
 ) as dag:
