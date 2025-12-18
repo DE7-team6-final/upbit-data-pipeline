@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - dev
-  workflow_dispatch:
 
 jobs:
   deploy:
@@ -50,13 +49,10 @@ jobs:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: webhook-trigger
           payload: |
-            {
-              "text": ":rocket: *CD Result*: ${{ job.status }}\n
-              *Author:* ${{ github.actor }}\n
-              *Repo:* ${{ github.repository }}\n
-              *Branch:* ${{ github.ref_name }}\n
-              *Commit:* ${{ github.sha }}\n
-              *Action:* ${{ github.event_name }}\n
-              *Message:* ${{ github.event.head_commit.message }}"
-            }
-            
+                  {
+                    "text": "${{ job.status == 'success' && '✅' || '❌' }} *AWS CD Result*: ${{ job.status }}\n
+                    *Author:* ${{ github.actor }}\n
+                    *Repo:* <${{ github.server_url }}/${{ github.repository }}|${{ github.repository }}>\n
+                    *Branch:* <${{ github.server_url }}/${{ github.repository }}/tree/${{ github.ref_name }}|${{ github.ref_name }}>\n
+                    *Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n
+                  }
