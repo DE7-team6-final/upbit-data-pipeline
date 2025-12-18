@@ -124,6 +124,7 @@ def upload_to_s3(**context):
     now = datetime.now()
     file_name = "stock"
     s3_key = f"yymmdd={now.strftime('%Y-%m-%d')}/{file_name}"
+
     bucket_name = "team6-batch"  
 
     # 메모리에서 Parquet 변환 후 업로드
