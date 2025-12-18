@@ -9,6 +9,7 @@ __pycache__/
 
 # Environment variables
 .env
+*.pem
 
 # OS files
 .DS_Store
