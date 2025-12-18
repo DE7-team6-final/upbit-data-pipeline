@@ -1,0 +1,60 @@
+name: Deploy Dags
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout:
+            batch
+    
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.AWS_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.AIRFLOW_CORE_IP }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.AIRFLOW_WORKER_IP }} >> ~/.ssh/known_hosts
+
+      - name: Deploy DAGs to Core
+        run: |
+          rsync -avz \
+            --rsync-path="sudo rsync" \
+            batch/dags/raw/ \
+            batch/dags/silver/ \
+            batch/plugins/ \
+            ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_CORE_IP }}:/home/${{ secrets.AIRFLOW_USER }}/airflow/dags/
+
+      - name: Deploy DAGs to Worker
+        run: |
+          rsync -avz \
+            --rsync-path="sudo rsync" \
+            batch/dags/raw/ \
+            batch/dags/silver/ \
+            batch/plugins/ \
+            ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_WORKER_IP }}:/home/${{ secrets.AIRFLOW_USER }}/airflow/dags/
+
+      - name: Slack Notification (Always)
+        if: always() # 성공/실패 여부와 상관없이 실행
+        uses: slackapi/slack-github-action@v2.1.1
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: webhook-trigger
+          payload: |
+            {
+              "text": ":rocket: *CD Result*: ${{ job.status }}\n\
+              *Author:* ${{ github.actor }}\n\
+              Repo: ${{ github.repository }}\n\
+              Branch: ${{ github.ref_name }}\n\
+              Commit: ${{ github.sha }}"
+              *Action:* ${{ github.event_name }}\n\
+              *Message:* ${{ github.event.head_commit.message }}\n\
+            }
