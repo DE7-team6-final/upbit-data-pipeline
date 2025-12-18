@@ -54,5 +54,5 @@ jobs:
                     *Author:* ${{ github.actor }}\n
                     *Repo:* <${{ github.server_url }}/${{ github.repository }}|${{ github.repository }}>\n
                     *Branch:* <${{ github.server_url }}/${{ github.repository }}/tree/${{ github.ref_name }}|${{ github.ref_name }}>\n
-                    *Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n
+                    *Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n"
                   }
