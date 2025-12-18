@@ -6,8 +6,9 @@ import requests
 import json
 import time
 import pandas as pd
-import boto3
+
 from io import BytesIO
+from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 
 BASE_URL = "https://openapi.koreainvestment.com:9443"
 
@@ -25,7 +26,6 @@ def get_access_token(**context):
     한국투자증권 Access Token 발급
     """
 
-    MODE = "PROD" 
     APP_KEY = Variable.get("kis_app_key")
     APP_SECRET = Variable.get("kis_app_secret")
     url = f"{BASE_URL}/oauth2/tokenP"
@@ -85,13 +85,13 @@ def fetch_stock_prices(**context):
             output = data['output']
             # 필요한 데이터 정제
             record = {
-                'code': output['rsym'],          # 종목코드 (실시간조회종목코드)
+                'code': output['rsym'],          # 종목코드 
                 'trade_price': float(output['last']), # 현재가
                 'open': float(output['open']),        # 시가
                 'high': float(output['high']),        # 고가
                 'low': float(output['low']),          # 저가
                 'prev_close': float(output['base']),  # 전일종가
-                'volume': float(output['tvol']),      # 거래량 (문서 하단 tvol 사용)
+                'volume': float(output['tvol']),      # 거래량 
                 'trade_amount': float(output['tamt']),# 거래대금
                 'market_cap': float(output['tomv']),  # 시가총액
                 'per': float(output['perx']),         # PER
@@ -122,8 +122,8 @@ def upload_to_s3(**context):
     
     
     now = datetime.now()
-    file_name = f"{now.strftime('%Y-%m-%d')}.parquet"
-    s3_key = f"kis_stock/{file_name}"
+    file_name = "stock"
+    s3_key = f"{now.strftime('%Y-%m-%d')}/{file_name}"
     bucket_name = "team6-batch"  
 
     aws_access_key = Variable.get("aws_access_key_id")
@@ -132,13 +132,15 @@ def upload_to_s3(**context):
     # 메모리에서 Parquet 변환 후 업로드
     out_buffer = BytesIO()
     df.to_parquet(out_buffer, index=False)
-    
-    s3 = boto3.client(
-        's3',
-        aws_access_key_id=aws_access_key,
-        aws_secret_access_key=aws_secret_key
+    s3_hook = S3Hook(aws_conn_id='aws_conn_id')
+
+    s3_hook.load_bytes(
+        bytes_data=out_buffer.getvalue(),
+        key=s3_key,
+        bucket_name=bucket_name,
+        replace=True  # 덮어쓰기 허용 (재실행 시 에러 방지)
     )
-    s3.put_object(Bucket=bucket_name, Key=s3_key, Body=out_buffer.getvalue())
+    
     
     print(f"S3 업로드 완료: s3://{bucket_name}/{s3_key}")
 
