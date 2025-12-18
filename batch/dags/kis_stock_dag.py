@@ -126,9 +126,6 @@ def upload_to_s3(**context):
     s3_key = f"{now.strftime('%Y-%m-%d')}/{file_name}"
     bucket_name = "team6-batch"  
 
-    aws_access_key = Variable.get("aws_access_key_id")
-    aws_secret_key = Variable.get("aws_secret_access_key")
-
     # 메모리에서 Parquet 변환 후 업로드
     out_buffer = BytesIO()
     df.to_parquet(out_buffer, index=False)
