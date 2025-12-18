@@ -51,11 +51,12 @@ jobs:
           webhook-type: webhook-trigger
           payload: |
             {
-              "text": ":rocket: *CD Result*: ${{ job.status }}\n\
-              *Author:* ${{ github.actor }}\n\
-              Repo: ${{ github.repository }}\n\
-              Branch: ${{ github.ref_name }}\n\
-              Commit: ${{ github.sha }}"
-              *Action:* ${{ github.event_name }}\n\
-              *Message:* ${{ github.event.head_commit.message }}\n\
+              "text": ":rocket: *CD Result*: ${{ job.status }}\n
+              *Author:* ${{ github.actor }}\n
+              *Repo:* ${{ github.repository }}\n
+              *Branch:* ${{ github.ref_name }}\n
+              *Commit:* ${{ github.sha }}\n
+              *Action:* ${{ github.event_name }}\n
+              *Message:* ${{ github.event.head_commit.message }}"
             }
+            
