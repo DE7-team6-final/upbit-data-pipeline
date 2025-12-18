@@ -50,7 +50,7 @@ jobs:
           webhook-type: webhook-trigger
           payload: |
                   {
-                    "text": "${{ job.status == 'success' && '✅' || '❌' }} *AWS CD Result*: ${{ job.status }}\n
+                    "text": "${{ job.status == 'success' && '✅' || '❌' }} *AWS CD Result*: Github Actions ${{ job.status }}\n
                     *Author:* ${{ github.actor }}\n
                     *Repo:* <${{ github.server_url }}/${{ github.repository }}|${{ github.repository }}>\n
                     *Branch:* <${{ github.server_url }}/${{ github.repository }}/tree/${{ github.ref_name }}|${{ github.ref_name }}>\n

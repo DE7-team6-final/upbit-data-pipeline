@@ -7,7 +7,7 @@ import time
 
 with DAG(
     dag_id = 'test_dag',
-    start_data = datetime(2025, 12, 18),
+    start_date = datetime(2025, 12, 18),
     catchup = False,
     tags = ['upbit', 'test']
 ) as dag:
