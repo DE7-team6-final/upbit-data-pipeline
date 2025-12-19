@@ -5,7 +5,7 @@ import logging
 from datetime import datetime
 import pyarrow as pa
 import pyarrow.parquet as pq
-import io
+import io   
 
 '''
     캔들 데이터 수집 DAG에 공통적으로 사용되는 요소들
@@ -25,8 +25,6 @@ def transform_and_load_to_s3(all_market_data, key):
 
     today = datetime.today().strftime('%Y-%m-%d')
     try:
-        print(all_market_data)
-        print('길이', len(all_market_data))
         data = pa.Table.from_pylist(all_market_data)
 
         buffer = io.BytesIO()
