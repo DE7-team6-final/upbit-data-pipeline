@@ -6,6 +6,7 @@ import requests
 import json
 import time
 import pandas as pd
+import pytz
 
 from io import BytesIO
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
@@ -17,7 +18,7 @@ TARGET_STOCKS = [
     {"code": "BMNR", "name": "BITMINE IMMERSION TECNOLOGIES", "market":"AMS"}, #아멕스
     {"code": "COIN", "name": "COINBASE GLOBAL", "market":"NAS"}, #나스닥
     {"code": "RIOT", "name": "RIOT PLATFORMS", "market":"NAS"},#나스닥
-    {"code": "09399", "name": "CSOP MICROSTRATEGY", "market":"HKS"},#홍콩
+    {"code": "BITO", "name": "PROSHARES BITCOIN", "market":"AMS"},#아멕스
     {"code":"QQQ","name":"INVESCO QQQ TRUST", "market":"NAS"} #나스닥
 ]
 
@@ -55,58 +56,98 @@ def fetch_stock_prices(**context):
     # 이전 Task에서 토큰 받아오기
     access_token = context['task_instance'].xcom_pull(task_ids='get_token_task')
     
-    results = []
     APP_KEY = Variable.get("kis_app_key")
     APP_SECRET = Variable.get("kis_app_secret")
+
+    kst = pytz.timezone('Asia/Seoul')
+    now_kst = datetime.now(kst)
+    target_date = (now_kst - timedelta(days=1)).strftime("%Y%m%d")
+    print(f"수집 대상 날짜 (KST 전일): {target_date}")
+
     headers = {
         "content-type": "application/json",
         "authorization": f"Bearer {access_token}",
         "appkey": APP_KEY,
         "appsecret": APP_SECRET,
-        "tr_id": "HHDFS76200200"  # 주식 현재가 시세 TR ID
+        "tr_id": "HHDFS76950200"  # 주식 현재가 시세 TR ID
     }
-    
+
+    all_results = []
+
     for stock in TARGET_STOCKS:
-        
+        stock_data = []
         params = {
-            "AUTH": "",           
-            "EXCD": stock['market'], # NYS(뉴욕), NAS(나스닥), AMS(아멕스)
-            "SYMB": stock['code']    # 종목코드 (AAPL, TSLA 등)
+            "AUTH": "",
+            "EXCD": stock['market'], # 거래소 코드 (NAS, AMS)
+            "SYMB": stock['code'],   # 종목 코드
+            "NMIN": "1",             # 1분봉
+            "PINC": "1",
+            "NEXT": "",              # 다음 페이지 여부
+            "NREC": "120",           # 요청당 개수 (최대 120)
+            "FILL": "",
+            "KEYB": ""
         }
         
-        url = f"{BASE_URL}/uapi/overseas-price/v1/quotations/price-detail"
-        res = requests.get(url, headers=headers, params=params)
+        url = f"{BASE_URL}/uapi/overseas-price/v1/quotations/inquire-time-itemchartprice"
         
-        if res.status_code == 200:
-            data = res.json()
-            if data['rt_cd'] != '0':
-                print(f"API 호출 실패({stock['code']}): {data['msg1']}")
-                continue
-            output = data['output']
-            # 필요한 데이터 정제
-            record = {
-                'code': output['rsym'],          # 종목코드 
-                'trade_price': float(output['last']), # 현재가
-                'open': float(output['open']),        # 시가
-                'high': float(output['high']),        # 고가
-                'low': float(output['low']),          # 저가
-                'prev_close': float(output['base']),  # 전일종가
-                'volume': float(output['tvol']),      # 거래량 
-                'trade_amount': float(output['tamt']),# 거래대금
-                'market_cap': float(output['tomv']),  # 시가총액
-                'per': float(output['perx']),         # PER
-                'pbr': float(output['pbrx']),         # PBR
-                'trade_date': datetime.now().strftime("%Y%m%d"), # 수집일자
-                'collected_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            }
-            results.append(record)
-            print(f"수집 성공: {stock['name']}")
-        else:
-            print(f"수집 실패: {stock['name']} - {res.text}")
-            
-        time.sleep(0.2)
+        while True:
+            try:
+                res = requests.get(url, headers=headers, params=params)
+                
+                if res.status_code != 200:
+                    print(f"API 호출 실패({stock['code']}): {res.text}")
+                    break
+                data = res.json()
+                if data['rt_cd'] != '0':
+                    print(f"API 호출 실패({stock['code']}): {data['msg1']}")
+                    break
+                bars = data.get("output2", [])
+                if not bars:
+                    break
+
+                stop_collection=False
+                for bar in bars: 
+                    current_date=bar.get("tymd")
+
+                    if current_date == target_date: 
+                        record = {
+                        'code': stock['code'],
+                        'name': stock['name'],
+                        'market': stock['market'],
+                        'trade_date': bar['tymd'],      # 영업일자
+                        'trade_time': bar['xhms'],      # 체결시간(HHMMSS)
+                        'open': float(bar['open']),     # 시가
+                        'high': float(bar['high']),     # 고가
+                        'low': float(bar['low']),       # 저가
+                        'close': float(bar['last']),    # 종가 (API 응답 키 'last')
+                        'volume': float(bar['evol']),   # 거래량
+                        'collected_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        }
+                        stock_data.append(record)
+                    elif current_date < target_date:
+                        stop_collection=True
+                        break 
+                if stop_collection:
+                    print(f"  -> {target_date} 이전 데이터 도달. 수집 종료.")
+                    break 
+                if len(bars) < 2: # 데이터가 거의 없으면 중단
+                    break
+                last_bar = bars[-1]
+                
+                params["NEXT"] = "1" # 다음 페이지 조회 시 필수
+                # KEYB는 YYYYMMDD + HHMMSS (반드시 이전 응답의 마지막 데이터 기준)
+                params["KEYB"] = (last_bar.get("xymd") or last_bar.get("tymd")) + last_bar.get("xhms")
+
+
+                time.sleep(0.2)
+            except Exception as e:
+                print(f"Loop 중 에러 발생: {e}")
+                break 
+        print(f"수집 성공: {stock['name']}")
+        all_results.extend(stock_data)
+        time.sleep(0.5) # 종목 간 딜레이
         
-    return results
+    return all_results
 
 def upload_to_s3(**context):
     """
@@ -122,7 +163,7 @@ def upload_to_s3(**context):
     
     
     now = datetime.now()
-    file_name = "stock"
+    file_name = "stock.parquet"
 
     s3_key = f"yymmdd={now.strftime('%Y-%m-%d')}/{file_name}"
     bucket_name = "team6-batch"  
@@ -153,8 +194,8 @@ default_args = {
 with DAG(
     'kis_stock_batch_loader',
     default_args=default_args,
-    description='한투 API 주식 현재가 수집',
-    schedule='10 9 * * 1-5', # 평일 9시 10분마다 실행
+    description='한투 API 주식 1분봉 수집',
+    schedule='1 0 * * 1-5', # kst 9시 1분 시작 
     start_date=datetime(2025, 12, 1),
     catchup=False,
     tags=['kis', 'stock', 'batch']
