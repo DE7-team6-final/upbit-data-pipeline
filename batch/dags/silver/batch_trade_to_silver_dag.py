@@ -170,6 +170,7 @@ def load_trades_to_snowflake(ds, **context):
 
     conn = snowflake_hook.get_conn()
     cur = conn.cursor()
+    cur.execute("USE WAREHOUSE DATA_TEAM_WH")
     cur.execute("USE DATABASE UPBIT_DB")
     cur.execute("USE SCHEMA SILVER")
 
@@ -179,6 +180,7 @@ def load_trades_to_snowflake(ds, **context):
         table_name=TARGET_TABLE,
         database="UPBIT_DB",
         schema="SILVER",
+        use_logical_type=True,
     )
 
     logging.info(f"Snowflake write complete: success={success}, rows={nrows}")
@@ -188,7 +190,7 @@ with DAG(
     dag_id="batch_trade_to_silver_dag",
     default_args=default_args,
     description="Load batch trade data from S3 into Snowflake Silver layer",
-    schedule_interval=None,
+    schedule_interval="@daily",
     catchup=False,
     max_active_runs=1,
     concurrency=1,
