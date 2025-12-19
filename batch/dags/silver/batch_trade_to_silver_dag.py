@@ -132,6 +132,14 @@ def load_trades_to_snowflake(ds, **context):
         .dt.date
     )
 
+    # ============================
+    # Snowflake write stabilization
+    unified_df["TRADE_TS"] = (
+        unified_df["TRADE_TS"]
+        .dt.tz_convert("UTC")
+        .dt.tz_localize(None)
+    )
+
     # Ingestion and lineage
     unified_df["INGESTION_TIME"] = datetime.utcnow()
     unified_df["SOURCE"] = "batch_trade"
@@ -170,7 +178,7 @@ def load_trades_to_snowflake(ds, **context):
 
     conn = snowflake_hook.get_conn()
     cur = conn.cursor()
-    cur.execute("USE WAREHOUSE DATA_TEAM_WH")
+    cur.execute("USE WAREHOUSE COMPUTE_WH")
     cur.execute("USE DATABASE UPBIT_DB")
     cur.execute("USE SCHEMA SILVER")
 
