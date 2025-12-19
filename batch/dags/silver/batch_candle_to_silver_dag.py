@@ -151,6 +151,16 @@ def load_candles_to_snowflake(ds, **context):
         .dt.tz_convert("Asia/Seoul")
         .dt.date
     )
+
+    # ============================
+    # Snowflake write stabilization
+    # ============================
+    unified_df["CANDLE_TS"] = (
+        unified_df["CANDLE_TS"]
+        .dt.tz_convert("UTC")
+        .dt.tz_localize(None)
+    )
+
     unified_df["SOURCE"] = "UPBIT_BATCH"
 
     expected_columns = [
@@ -187,7 +197,7 @@ def load_candles_to_snowflake(ds, **context):
     # -------------------------------------------------------------------
     conn = snowflake_hook.get_conn()
     cur = conn.cursor()
-
+    cur.execute("USE WAREHOUSE COMPUTE_WH")
     cur.execute("USE DATABASE UPBIT_DB")
     cur.execute("USE SCHEMA SILVER")
 
@@ -197,6 +207,7 @@ def load_candles_to_snowflake(ds, **context):
         table_name=TARGET_TABLE,
         database="UPBIT_DB",
         schema="SILVER",
+        use_logical_type=True,
     )
 
     logging.info(
@@ -211,7 +222,7 @@ with DAG(
     dag_id="batch_candle_to_silver_dag",
     default_args=default_args,
     description="Load batch candle data from S3 into Snowflake Silver layer",
-    schedule_interval=None,
+    schedule_interval="0 1 * * *",  # UTC 01:00 = KST 10:00
     catchup=False,
     max_active_runs=1,
     concurrency=1,
