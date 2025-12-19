@@ -134,6 +134,7 @@ def load_trades_to_snowflake(ds, **context):
 
     # ============================
     # Snowflake write stabilization
+    # ============================
     unified_df["TRADE_TS"] = (
         unified_df["TRADE_TS"]
         .dt.tz_convert("UTC")
@@ -198,7 +199,7 @@ with DAG(
     dag_id="batch_trade_to_silver_dag",
     default_args=default_args,
     description="Load batch trade data from S3 into Snowflake Silver layer",
-    schedule_interval="@daily",
+    schedule_interval="0 10  * * *",  # Daily at 10:00 KST
     catchup=False,
     max_active_runs=1,
     concurrency=1,

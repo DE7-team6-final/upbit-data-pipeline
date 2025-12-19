@@ -222,7 +222,7 @@ with DAG(
     dag_id="batch_candle_to_silver_dag",
     default_args=default_args,
     description="Load batch candle data from S3 into Snowflake Silver layer",
-    schedule_interval="@daily",
+    schedule_interval="0 10 * * *",  # Daily at 10:00 KST
     catchup=False,
     max_active_runs=1,
     concurrency=1,
