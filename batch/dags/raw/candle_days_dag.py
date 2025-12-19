@@ -20,7 +20,7 @@ with DAG(
         일간 캔들의 데이터를 수집합니다.
         
         오늘의 날짜를 가져옵니다. 오늘의 날짜와 DAG 시작일이 같다면 최초 실행, 아니라면 반복 실행으로 간주합니다.
-        최초 실행이라면 200일 전 ~ 현재의 데이터를, 반복 실행이라면 최근 7일의 데이터를 가져옵니다.
+        최초 실행이라면 200일 전 ~ 어제의 데이터를, 반복 실행이라면 어제의 데이터를 가져옵니다.
         추출된 데이터는 parquet 형태로 파싱하여 S3에 적재됩니다.
     '''
 
@@ -33,7 +33,7 @@ with DAG(
             count = 200
             logging.info('First Run')
         else:
-            count = 7
+            count = 1
             logging.info('Incremental Run')
 
         return count
@@ -58,7 +58,7 @@ with DAG(
                 logging.info(f'Extract Error. Coin name: {m}')
                 print(f'Extract Error. Coin name: {m}')
                 raise e
-            time.sleep(1)
+            time.sleep(0.5)
 
         logging.info('Extract Complete')
         return all_market_data

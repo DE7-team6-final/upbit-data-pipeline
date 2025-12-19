@@ -44,7 +44,7 @@ with DAG(
                 logging.info(f'Extract Error. Coin name: {m}')
                 print(f'Extract Error. Coin name: {m}')
                 raise e
-            time.sleep(1)
+            time.sleep(0.5)
 
         logging.info('Extract Complete')
         return all_market_data
