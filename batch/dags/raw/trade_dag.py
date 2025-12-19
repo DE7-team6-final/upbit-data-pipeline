@@ -53,7 +53,7 @@ with DAG(
                 else:
                     temp = []
                     for i in data:
-                        if i['trade_time_utc'] < yesterday:
+                        if i['trade_time_utc'] < '13:00:00':
                             ingest = False
                             break
                         else:
