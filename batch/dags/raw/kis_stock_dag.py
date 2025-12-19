@@ -160,7 +160,16 @@ def upload_to_s3(**context):
         return
 
     df = pd.DataFrame(data)
+    df = df.drop_duplicates(subset=['code', 'trade_time'], keep='first')
     
+    # 3. 정규장 시간 필터링 함수 정의 (09:30 ~ 16:00)
+    def is_market_open(row):
+        t = row['trade_time']        
+        return "093000" <= t <= "160000"
+
+    # 필터링 적용
+    df = df[df.apply(is_market_open, axis=1)]
+    print(df.groupby('code')['trade_time'].count())
     
     now = datetime.now()
     file_name = "stock.parquet"
@@ -179,7 +188,6 @@ def upload_to_s3(**context):
         bucket_name=bucket_name,
         replace=True  # 덮어쓰기 허용 (재실행 시 에러 방지)
     )
-    
     
     print(f"S3 업로드 완료: s3://{bucket_name}/{s3_key}")
 
