@@ -32,7 +32,6 @@ with DAG(
             한 번의 호출 시 500개의 가져오며 13시가 되지 않았다면
             sequential_id 를 이용하여 해당 지점부터 데이터를 가져옵니다.
         """
-        yesterday = (datetime.today() - timedelta(days = 1)).strftime('%Y-%m-%d')
         url = BASE_URL + 'trades/ticks'
         params = DEFAULT_PARAMS.copy()
         params['market'] = 'KRW-BTC'
@@ -61,8 +60,7 @@ with DAG(
                     market_data = market_data + temp
                 time.sleep(0.5)
         except Exception as e:
-            logging.info(f'Fetch Error')
-            print(f'Fetch Error')
+            logging.info(f'Fetch Error {data}')
             raise e
         
         logging.info(f'Fetch Complete.')
