@@ -32,7 +32,6 @@ with DAG(
             한 번의 호출 시 500개의 가져오며 13시가 되지 않았다면
             sequential_id 를 이용하여 해당 지점부터 데이터를 가져옵니다.
         """
-        yesterday = (datetime.today() - timedelta(days = 1)).strftime('%Y-%m-%d')
         url = BASE_URL + 'trades/ticks'
         params = DEFAULT_PARAMS.copy()
         params['market'] = 'KRW-BTC'
