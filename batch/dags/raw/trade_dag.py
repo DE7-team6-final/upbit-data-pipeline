@@ -61,8 +61,7 @@ with DAG(
                     market_data = market_data + temp
                 time.sleep(0.5)
         except Exception as e:
-            logging.info(f'Fetch Error')
-            print(f'Fetch Error')
+            logging.info(f'Fetch Error {data}')
             raise e
         
         logging.info(f'Fetch Complete.')

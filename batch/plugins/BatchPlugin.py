@@ -41,5 +41,4 @@ def transform_and_load_to_s3(all_market_data, key):
         logging.info('Transform, Load Complete')
     except Exception as e:
         logging.info('Transform, Load Error')
-        print(e)
         raise e

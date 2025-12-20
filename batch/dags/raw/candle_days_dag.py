@@ -55,8 +55,7 @@ with DAG(
                 data = response.json()
                 all_market_data = all_market_data + data
             except Exception as e:
-                logging.info(f'Extract Error. Coin name: {m}')
-                print(f'Extract Error. Coin name: {m}')
+                logging.info(f'Extract Error. Coin name: {m}, Error: {data}')
                 raise e
             time.sleep(0.5)
 
