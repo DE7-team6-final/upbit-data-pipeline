@@ -28,7 +28,7 @@ from google.cloud import storage
 # =========================
 WINDOW_MINUTES = 5
 PRICE_THRESHOLD = 0.015      # ±1.5%
-VOLUME_MULTIPLIER = 3.0     # 3x
+VOLUME_MULTIPLIER = 1.5     # 1.5x
 COOLDOWN_SECONDS = 10 * 60
 POLL_SECONDS = 10
 
@@ -311,8 +311,18 @@ class AlertWorker:
         # if price OR volume condition met and not in cooldown:
         if (abs(price_change) >= PRICE_THRESHOLD or volume_ratio >= VOLUME_MULTIPLIER) \
                 and not self.in_cooldown(market):
+            
+            message = (
+                f"🚨 *Streaming Alert (v1)*\n"
+                f"Market: `{market}`\n"
+                f"Price change: {price_change:.2%}\n"
+                f"Volume ratio: {volume_ratio:.2f}\n"
+                f"Time (KST): {minute_to_str(bar['minute'])}"
+            )
+
             #   print alert (dry-run)
             print(f"ALERT: {market} - {bar} (price_change: {price_change}, volume_ratio: {volume_ratio})")
+            send_slack(self.slack_webhook, message)
             #   set cooldown
             self.set_cooldown(market)
 
