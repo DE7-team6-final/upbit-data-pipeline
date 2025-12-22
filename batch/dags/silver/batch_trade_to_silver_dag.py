@@ -120,7 +120,6 @@ def load_trades_to_snowflake(ds, **context):
         unified_df["TRADE_TS"],
         unit="ms",
         utc=True,
-        errors="coerce",
     )
 
     if unified_df["TRADE_TS"].isna().any():
@@ -142,7 +141,7 @@ def load_trades_to_snowflake(ds, **context):
     )
 
     # Ingestion and lineage
-    unified_df["INGESTION_TIME"] = datetime.utcnow()
+    unified_df["INGESTION_TIME"] = pd.Timestamp.utcnow().tz_localize(None)
     unified_df["SOURCE"] = "batch_trade"
 
     # Optional columns may not exist depending on upstream
