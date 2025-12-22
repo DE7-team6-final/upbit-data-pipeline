@@ -9,6 +9,7 @@ Airflow DAG: dbt Gold automation
 from airflow import DAG
 from airflow.operators.bash import BashOperator
 from datetime import datetime, timedelta
+from SlackAlert import send_slack_failure_callback
 
 default_args = {
     "owner": "airflow",
@@ -18,6 +19,7 @@ default_args = {
     "email_on_retry": False,
     "retries": 1,
     "retry_delay": timedelta(minutes=5),
+    'on_failure_callback': send_slack_failure_callback
 }
 
 with DAG(

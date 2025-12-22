@@ -3,6 +3,7 @@ from airflow.decorators import task
 
 from BatchPlugin import transform_and_load_to_s3
 from BatchPlugin import BASE_URL, MARKETS, DEFAULT_PARAMS
+from SlackAlert import send_slack_failure_callback
 
 from datetime import datetime
 import requests
@@ -14,7 +15,10 @@ with DAG(
     start_date = datetime(2025, 12, 17),
     schedule = '33 0 * * *', # 한국 시간은 +9시
     catchup = False,
-    tags = ["upbit", "candle", "raw"]
+    tags = ["upbit", "candle", "raw"],
+    default_args = {
+        'on_failure_callback': send_slack_failure_callback
+    },
 ) as dag:
     '''
         일간 캔들의 데이터를 수집합니다.
