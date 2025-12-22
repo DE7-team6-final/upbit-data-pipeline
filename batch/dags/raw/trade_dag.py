@@ -3,6 +3,7 @@ from airflow.decorators import task
 
 from BatchPlugin import transform_and_load_to_s3
 from BatchPlugin import BASE_URL, MARKETS, DEFAULT_PARAMS
+from SlackAlert import send_slack_failure_callback
 
 import logging
 from datetime import datetime, timedelta
@@ -15,6 +16,9 @@ with DAG(
     schedule='34 0 * * *',
     catchup=False,
     tags=["upbit", "trades", "raw"],
+    default_args = {
+        'on_failure_callback': send_slack_failure_callback
+    },
 ) as dag:
     """
         Airflow DAG: Upbit Trades Raw Ingest (fetch_trades -> S3)

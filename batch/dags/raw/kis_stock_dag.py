@@ -10,6 +10,7 @@ import pytz
 
 from io import BytesIO
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
+from SlackAlert import send_slack_failure_callback
 
 BASE_URL = "https://openapi.koreainvestment.com:9443"
 
@@ -197,6 +198,7 @@ default_args = {
     'depends_on_past': False,
     'retries': 1,
     'retry_delay': timedelta(minutes=1),
+    'on_failure_callback': send_slack_failure_callback
 }
 
 with DAG(

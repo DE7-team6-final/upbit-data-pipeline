@@ -22,6 +22,7 @@ import pandas as pd
 import io
 import pyarrow.parquet as pq
 import logging
+from SlackAlert import send_slack_failure_callback
 
 
 default_args = {
@@ -32,6 +33,7 @@ default_args = {
     "email_on_retry": False,
     "retries": 1,
     "retry_delay": timedelta(minutes=5),
+    'on_failure_callback': send_slack_failure_callback
 }
 
 
