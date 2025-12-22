@@ -11,6 +11,7 @@ import pytz
 
 from io import BytesIO
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
+from SlackAlert import send_slack_failure_callback
 
 BASE_URL = "https://openapi.koreainvestment.com:9443"
 
@@ -62,8 +63,9 @@ def fetch_stock_prices(**context):
 
     kst = pytz.timezone('Asia/Seoul')
     now_kst = datetime.now(kst)
-    target_date = "20251219"
-    # target_date = (now_kst - timedelta(days=1)).strftime("%Y%m%d")
+
+
+    target_date = (now_kst - timedelta(days=1)).strftime("%Y%m%d")
     print(f"수집 대상 날짜 (KST 전일): {target_date}")
 
     headers = {
@@ -137,7 +139,7 @@ def fetch_stock_prices(**context):
                 last_bar = bars[-1]
                 
                 params["NEXT"] = "1" # 다음 페이지 조회 시 필수
-                # KEYB는 YYYYMMDD + HHMMSS (반드시 이전 응답의 마지막 데이터 기준)
+                
                 params["KEYB"] = (last_bar.get("xymd") or last_bar.get("tymd")) + last_bar.get("xhms")
 
 
@@ -172,7 +174,7 @@ def upload_to_s3(**context):
     # 필터링 적용
     df = df[df.apply(is_market_open, axis=1)]
     print(df.groupby('code')['trade_time'].count())
-    
+
     rename_map = {
         'open': 'open_price',
         'high': 'high_price',
@@ -234,6 +236,7 @@ default_args = {
     'depends_on_past': False,
     'retries': 1,
     'retry_delay': timedelta(minutes=1),
+    'on_failure_callback': send_slack_failure_callback
 }
 
 with DAG(

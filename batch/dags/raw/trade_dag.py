@@ -3,6 +3,7 @@ from airflow.decorators import task
 
 from BatchPlugin import transform_and_load_to_s3
 from BatchPlugin import BASE_URL, MARKETS, DEFAULT_PARAMS
+from SlackAlert import send_slack_failure_callback
 
 import logging
 from datetime import datetime, timedelta
@@ -15,6 +16,9 @@ with DAG(
     schedule='34 0 * * *',
     catchup=False,
     tags=["upbit", "trades", "raw"],
+    default_args = {
+        'on_failure_callback': send_slack_failure_callback
+    },
 ) as dag:
     """
         Airflow DAG: Upbit Trades Raw Ingest (fetch_trades -> S3)
@@ -32,7 +36,6 @@ with DAG(
             한 번의 호출 시 500개의 가져오며 13시가 되지 않았다면
             sequential_id 를 이용하여 해당 지점부터 데이터를 가져옵니다.
         """
-        yesterday = (datetime.today() - timedelta(days = 1)).strftime('%Y-%m-%d')
         url = BASE_URL + 'trades/ticks'
         params = DEFAULT_PARAMS.copy()
         params['market'] = 'KRW-BTC'
@@ -61,8 +64,7 @@ with DAG(
                     market_data = market_data + temp
                 time.sleep(0.5)
         except Exception as e:
-            logging.info(f'Fetch Error')
-            print(f'Fetch Error')
+            logging.info(f'Fetch Error {data}')
             raise e
         
         logging.info(f'Fetch Complete.')

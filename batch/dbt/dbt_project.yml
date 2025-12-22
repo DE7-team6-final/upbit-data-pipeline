@@ -1,0 +1,6 @@
+models:
+  upbit_dbt:
+    silver:
+      +materialized: view
+    gold:
+      +materialized: table

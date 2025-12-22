@@ -3,6 +3,7 @@ from airflow.decorators import task
 
 from BatchPlugin import transform_and_load_to_s3
 from BatchPlugin import BASE_URL, MARKETS, DEFAULT_PARAMS
+from SlackAlert import send_slack_failure_callback
 
 from datetime import datetime, timedelta
 import requests
@@ -14,7 +15,10 @@ with DAG(
     start_date = datetime(2025, 12, 17),
     schedule = '31 0 * * *', # 한국 시간은 +9시
     catchup = False,
-    tags = ["upbit", "candle", "raw"]
+    tags = ["upbit", "candle", "raw"],
+    default_args = {
+        'on_failure_callback': send_slack_failure_callback
+    },
 ) as dag:
     '''
         5분 캔들의 데이터를 수집합니다.
@@ -45,9 +49,9 @@ with DAG(
                     data = response.json()
                     all_market_data = all_market_data + data
                 except Exception as e:
-                    logging.info(f'Extract Error. Coin name: {m}')
-                    print(f'Extract Error. Coin name: {m}')
+                    logging.info(f'Extract Error. Coin name: {m}, Error: {data}')
                     raise e
+                time.sleep(0.5)
             time.sleep(0.5)
         
         logging.info('Extract Complete')
