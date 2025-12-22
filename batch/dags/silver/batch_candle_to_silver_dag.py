@@ -110,7 +110,7 @@ def load_candles_to_snowflake(ds, **context):
         df = table.to_pandas()
 
         df["CANDLE_INTERVAL"] = get_candle_interval(key)
-        df["INGESTION_TIME"] = datetime.utcnow()
+        df["INGESTION_TIME"] = pd.Timestamp.utcnow().tz_localize(None)
 
         all_dataframes.append(df)
 
@@ -138,7 +138,6 @@ def load_candles_to_snowflake(ds, **context):
         unified_df["CANDLE_TS"],
         unit="ms",
         utc=True,
-        errors="coerce",
     )
 
     if unified_df["CANDLE_TS"].isna().any():
