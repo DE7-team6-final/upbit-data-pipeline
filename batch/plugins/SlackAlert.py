@@ -18,7 +18,7 @@ def send_message(json):
 
 def send_slack_failure_callback(context):
     ti = context.get('task_instance')
-    execution_date = (context.get('execution_date') + timedelta(hours=9)).strftime('%Y-%m-%d %H:%M')
+    execution_date = context.get('execution_date').strftime('%Y-%m-%d %H:%M')
     run_id = ti.run_id
     dag_id = context.get('dag').dag_id
     task_id = ti.task_id
@@ -37,7 +37,7 @@ def send_slack_failure_callback(context):
 
 def send_slack_success_callback(context):
     ti = context.get('task_instance')
-    execution_date = (context.get('execution_date') + timedelta(hours=9)).strftime('%Y-%m-%d %H:%M')
+    execution_date = context.get('execution_date').strftime('%Y-%m-%d %H:%M')
     run_id = ti.run_id
     dag_id = context.get('dag').dag_id
     duration = ti.duration
