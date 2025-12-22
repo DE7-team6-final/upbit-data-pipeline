@@ -30,6 +30,7 @@ jobs:
             --rsync-path="sudo rsync" \
             batch/dags/raw/ \
             batch/dags/silver/ \
+            batch/dags/gold/ \
             batch/plugins/ \
             ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_CORE_IP }}:/home/${{ secrets.AIRFLOW_USER }}/airflow/dags/
 
@@ -39,6 +40,7 @@ jobs:
             --rsync-path="sudo rsync" \
             batch/dags/raw/ \
             batch/dags/silver/ \
+            batch/dags/gold/ \
             batch/plugins/ \
             ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_WORKER_IP }}:/home/${{ secrets.AIRFLOW_USER }}/airflow/dags/
 
