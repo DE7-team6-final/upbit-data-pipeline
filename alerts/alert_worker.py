@@ -27,7 +27,7 @@ from google.cloud import storage
 # Config (v1 fixed)
 # =========================
 WINDOW_MINUTES = 5
-PRICE_THRESHOLD = 0.03      # ±3%
+PRICE_THRESHOLD = 0.015      # ±1.5%
 VOLUME_MULTIPLIER = 3.0     # 3x
 COOLDOWN_SECONDS = 10 * 60
 POLL_SECONDS = 10
