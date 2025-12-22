@@ -2,7 +2,7 @@ from airflow import DAG
 from airflow.decorators import task
 
 from BatchPlugin import transform_and_load_to_s3
-from BatchPlugin import BASE_URL, MARKETS, DEFAUT_PARAMS
+from BatchPlugin import BASE_URL, MARKETS, DEFAULT_PARAMS
 from SlackAlert import send_slack_failure_callback
 
 from datetime import datetime, timedelta
