@@ -87,7 +87,15 @@ def send_slack_message(message: str):
 
 
 def format_message(rows: List[Dict]) -> str:
-    lines = ["🚨 *Upbit Gold Anomaly Alert (v2)*"]
+    total_count = len(rows)
+
+    lines = [
+        "📊 *Upbit Gold Anomaly Report (v2)*",
+        "",
+        f"오늘 Z-score 기준 초과 코인: *{total_count}개*",
+        f"상위 {min(MAX_ALERTS, total_count)}개만 표시 (관측용 리포트)",
+        "",
+    ]
 
     for row in rows:
         lines.append(
@@ -96,6 +104,7 @@ def format_message(rows: List[Dict]) -> str:
         )
 
     return "\n".join(lines)
+
 
 
 # =========================
