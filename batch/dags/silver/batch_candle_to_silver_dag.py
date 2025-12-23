@@ -138,11 +138,16 @@ def load_candles_to_snowflake(ds, **context):
     # Derived Silver columns
     unified_df["TRADE_PRICE"] = unified_df["CLOSE_PRICE"]
 
-    # CANDLE_TS: KST candle timestamp
-    unified_df["CANDLE_TS"] = pd.to_datetime(unified_df["CANDLE_TS"])
-    
-    if unified_df["CANDLE_TS"].isna().any():
-        raise ValueError("CANDLE_TS contains invalid values after parsing")
+    unified_df["CANDLE_TS"] = pd.to_datetime(unified_df["CANDLE_TS"], errors="coerce")
+
+    bad_rows = unified_df["CANDLE_TS"].isna().sum()
+    if bad_rows > 0:
+        sample = unified_df.loc[unified_df["CANDLE_TS"].isna(), ["CODE", "CANDLE_INTERVAL"]].head(10)
+        raise ValueError(
+            f"CANDLE_TS contains invalid values after parsing: bad_rows={bad_rows}. "
+            f"Sample rows:\n{sample.to_string(index=False)}"
+        )
+
 
     # TRADE_DATE: CANDLE_TS to date
     unified_df["TRADE_DATE"] = unified_df["CANDLE_TS"].dt.date
@@ -172,6 +177,9 @@ def load_candles_to_snowflake(ds, **context):
         raise ValueError(f"Missing expected columns: {missing}")
 
     unified_df = unified_df[expected_columns]
+
+    logging.info("CANDLE_TS is parsed from candle_date_time_kst (KST string) "
+    "and stored as timezone-naive datetime for TIMESTAMP_NTZ.")
 
     # -------------------------------------------------------------------
     # Debug logging (safe to keep for early production phase)
@@ -212,7 +220,7 @@ with DAG(
     default_args=default_args,
     description="Load batch candle data from S3 into Snowflake Silver layer",
     schedule_interval="0 1 * * *",  # UTC 01:00 = KST 10:00
-    catchup=False,
+    catchup=True,    # TEMP: enable backfill after Silver table recreation
     max_active_runs=1,
     concurrency=1,
 ) as dag:
