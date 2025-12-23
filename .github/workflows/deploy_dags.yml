@@ -34,7 +34,6 @@ jobs:
             echo "need_rebuild=false" >> $GITHUB_OUTPUT
           fi
 
-
       - name: Deploy DAGs to Core
         run: |
           rsync -avz \
@@ -43,23 +42,24 @@ jobs:
             batch/dags/silver/ \
             batch/dags/gold/ \
             batch/plugins/ \
-            ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_CORE_IP }}:/home/${{ secrets.AIRFLOW_USER }}/airflow/dags/ &&
+            ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_CORE_IP }}:/home/${{ secrets.AIRFLOW_USER }}/airflow/dags/
 
-          if [ "${{ steps.check_rebuild.outputs.need_rebuild }}" = "true" ]; then
-            rsync -avz \
-              --rsync-path="sudo rsync" \
-              requirements.txt \
-              Dockerfile \
-              ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_CORE_IP }}:/home/${{ secrets.AIRFLOW_USER }}/airflow/ &&
+      - name: Rebuild Core
+        if: steps.check_rebuild.outputs.need_rebuild == 'true'
+        run: |
+          rsync -avz \
+            --rsync-path="sudo rsync" \
+            requirements.txt \
+            Dockerfile \
+            ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_CORE_IP }}:/home/${{ secrets.AIRFLOW_USER }}/airflow/ &&
 
-            ssh ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_CORE_IP }} \
-              "cd /home/${{ secrets.AIRFLOW_USER }}/airflow && \
-              echo 'AIRFLOW__LOGGING__REMOTE_LOGGING=True' > .env && \
-              echo 'AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER=s3://team6-batch' >> .env && \
-              echo 'AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID=aws_conn_id' >> .env && \
-              docker compose down && \
-              docker compose up -d --build"
-          fi
+          ssh ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_CORE_IP }} \
+            "cd /home/${{ secrets.AIRFLOW_USER }}/airflow && \
+            echo 'AIRFLOW__LOGGING__REMOTE_LOGGING=True' > .env && \
+            echo 'AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER=s3://team6-batch' >> .env && \
+            echo 'AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID=aws_conn_id' >> .env && \
+            docker compose down && \
+            docker compose up -d --build"
 
       - name: Deploy DAGs to Worker
         run: |
@@ -76,6 +76,13 @@ jobs:
             batch/dbt \
             ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_WORKER_IP }}:/home/${{ secrets.AIRFLOW_USER }}/ &&
 
+          ssh ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_WORKER_IP }} "
+            sudo chown -R 1000:0 /home/${{ secrets.AIRFLOW_USER }}/dbt && \
+            sudo chmod -R 2775 /home/${{ secrets.AIRFLOW_USER }}/dbt"
+
+      - name: Rebuild Worker
+        if: steps.check_rebuild.outputs.need_rebuild == 'true'
+        run: |
           rsync -avz \
             --rsync-path="sudo rsync" \
             requirements.txt \
@@ -103,8 +110,7 @@ jobs:
           docker compose down && \
           docker compose up -d --build && \"
             
-      - name: Slack Notification (Always)
-        if: always() # 성공/실패 여부와 상관없이 실행
+      - name: Slack Notification
         uses: slackapi/slack-github-action@v2.1.1
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
