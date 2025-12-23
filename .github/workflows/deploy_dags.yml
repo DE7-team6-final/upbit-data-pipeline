@@ -32,7 +32,21 @@ jobs:
             batch/dags/silver/ \
             batch/dags/gold/ \
             batch/plugins/ \
-            ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_CORE_IP }}:/home/${{ secrets.AIRFLOW_USER }}/airflow/dags/
+            ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_CORE_IP }}:/home/${{ secrets.AIRFLOW_USER }}/airflow/dags/ &&
+
+          rsync -avz \
+            --rsync-path="sudo rsync" \
+            requirements.txt \
+            Dockerfile \
+            ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_CORE_IP }}:/home/${{ secrets.AIRFLOW_USER }}/airflow/ &&
+
+          ssh ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_CORE_IP }} \
+            "cd /home/${{ secrets.AIRFLOW_USER }}/airflow && \
+            echo 'AIRFLOW__LOGGING__REMOTE_LOGGING=True' > .env && \
+            echo 'AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER=s3://team6-batch' >> .env && \
+            echo 'AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID=aws_conn_id' >> .env && \
+            docker compose down && \
+            docker compose up -d --build"
 
       - name: Deploy DAGs to Worker
         run: |
@@ -42,8 +56,39 @@ jobs:
             batch/dags/silver/ \
             batch/dags/gold/ \
             batch/plugins/ \
-            ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_WORKER_IP }}:/home/${{ secrets.AIRFLOW_USER }}/airflow/dags/
+            ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_WORKER_IP }}:/home/${{ secrets.AIRFLOW_USER }}/airflow/dags/ &&
 
+          rsync -avz \
+            --rsync-path="sudo rsync" \
+            batch/dbt \
+            ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_WORKER_IP }}:/home/${{ secrets.AIRFLOW_USER }}/ &&
+
+          rsync -avz \
+            --rsync-path="sudo rsync" \
+            requirements.txt \
+            ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_WORKER_IP }}:/home/${{ secrets.AIRFLOW_USER }}/airflow/ &&
+
+          rsync -avz \
+            --rsync-path="sudo rsync" \
+            Dockerfile_Worker \
+            ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_WORKER_IP }}:/home/${{ secrets.AIRFLOW_USER }}/airflow/Dockerfile &&
+
+          ssh ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_CORE_IP }} \
+            "cd /home/${{ secrets.AIRFLOW_USER }}/airflow && \
+            echo 'AIRFLOW__LOGGING__REMOTE_LOGGING=True' > .env && \
+            echo 'AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER=s3://team6-batch' >> .env && \
+            echo 'AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID=aws_conn_id' >> .env && \
+            echo 'SNOWFLAKE_ACCOUNT=${{ secrets.SNOWFLAKE_ACCOUNT }}' >> .env && \
+            echo 'SNOWFLAKE_USER=${{ secrets.SNOWFLAKE_USER }}' >> .env && \
+            echo 'SNOWFLAKE_PASSWORD=${{ secrets.SNOWFLAKE_PASSWORD }}' >> .env && \
+            echo 'SNOWFLAKE_ROLE=${{ secrets.SNOWFLAKE_ROLE }}' >> .env && \
+            echo 'SNOWFLAKE_WAREHOUSE=${{ secrets.SNOWFLAKE_WAREHOUSE }}' >> .env && \
+            echo 'SNOWFLAKE_DATABASE=${{ secrets.SNOWFLAKE_DATABASE }}' >> .env && \
+            echo 'SNOWFLAKE_SCHEMA=SILVER' >> .env && \
+            docker compose down && \
+            docker compose up -d --build && \
+            docker exec -it airflow-airflow-worker-1 bash -c 'source /opt/dbt_venv/bin/activate && cd /opt/dbt && dbt debug --profiles-dir /opt/dbt'"
+            
       - name: Slack Notification (Always)
         if: always() # 성공/실패 여부와 상관없이 실행
         uses: slackapi/slack-github-action@v2.1.1
@@ -58,4 +103,3 @@ jobs:
                     *Branch:* <${{ github.server_url }}/${{ github.repository }}/tree/${{ github.ref_name }}|${{ github.ref_name }}>\n
                     *Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n"
                   }
-
