@@ -118,24 +118,25 @@ def load_trades_to_snowflake(ds, **context):
     # Timestamp handling
     # -------------------------------------------------------------------
     # Epoch(ms) → UTC tz-aware
-    unified_df["TRADE_TS"] = pd.to_datetime(
+    ts_utc = pd.to_datetime(
         unified_df["TRADE_TS"],
         unit="ms",
         utc=True,
+        errors="coerce",
     )
 
-    if unified_df["TRADE_TS"].isna().any():
-        raise ValueError("TRADE_TS contains invalid values after parsing")
+    bad_rows = ts_utc.isna().sum()
+    if bad_rows > 0:
+        raise ValueError(f"TRADE_TS contains invalid values after parsing: bad_rows={bad_rows}")
 
-    # TRADE_DATE derived in KST
-    unified_df["TRADE_DATE"] = (
-        unified_df["TRADE_TS"]
-        .dt.tz_convert("Asia/Seoul")
-        .dt.date
-    )
+    # UTC → KST tz-aware
+    tz_kst = ts_utc.dt.tz_convert("Asia/Seoul")
 
-    # Snowflake write stabilization (UTC tz-naive)
-    unified_df["TRADE_TS"] = unified_df["TRADE_TS"].dt.tz_localize(None)
+    # TRADE_DATE: KST date
+    unified_df["TRADE_DATE"] = tz_kst.dt.date
+
+    # TRADE_TS: KST timezone-naive (datetime for TIMESTAMP_NTZ)
+    unified_df["TRADE_TS"] = tz_kst.dt.tz_localize(None)
 
     # Lineage
     unified_df["SOURCE"] = "UPBIT_BATCH"
@@ -198,7 +199,7 @@ with DAG(
     default_args=default_args,
     description="Load batch trade data from S3 into Snowflake Silver layer",
     schedule_interval="0 1 * * *",  # UTC 01:00 = KST 10:00
-    catchup=False,
+    catchup=True,    # TEMP: enable backfill after Silver table recreation
     max_active_runs=1,
     concurrency=1,
 ) as dag:
