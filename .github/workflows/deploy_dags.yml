@@ -105,7 +105,7 @@ jobs:
           SNOWFLAKE_SCHEMA=SILVER
           EOL
           docker compose down && \
-          docker compose up -d --build && \"
+          docker compose up -d --build"
             
       - name: Slack Notification
         uses: slackapi/slack-github-action@v2.1.1
