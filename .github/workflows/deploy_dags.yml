@@ -24,6 +24,17 @@ jobs:
           ssh-keyscan -H ${{ secrets.AIRFLOW_CORE_IP }} >> ~/.ssh/known_hosts
           ssh-keyscan -H ${{ secrets.AIRFLOW_WORKER_IP }} >> ~/.ssh/known_hosts
 
+      - name: Check DBT Rebuild
+        id: check_rebuild
+        run: |
+          git fetch origin dev --depth=2
+          if git diff --name-only origin/dev HEAD | grep -E 'Dockerfile|Dockerfile_Worker|requirements.txt'; then
+            echo "need_rebuild=true" >> $GITHUB_OUTPUT
+          else
+            echo "need_rebuild=false" >> $GITHUB_OUTPUT
+          fi
+
+
       - name: Deploy DAGs to Core
         run: |
           rsync -avz \
@@ -34,19 +45,21 @@ jobs:
             batch/plugins/ \
             ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_CORE_IP }}:/home/${{ secrets.AIRFLOW_USER }}/airflow/dags/ &&
 
-          rsync -avz \
-            --rsync-path="sudo rsync" \
-            requirements.txt \
-            Dockerfile \
-            ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_CORE_IP }}:/home/${{ secrets.AIRFLOW_USER }}/airflow/ &&
+          if [ "${{ steps.check_rebuild.outputs.need_rebuild }}" = "true" ]; then
+            rsync -avz \
+              --rsync-path="sudo rsync" \
+              requirements.txt \
+              Dockerfile \
+              ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_CORE_IP }}:/home/${{ secrets.AIRFLOW_USER }}/airflow/ &&
 
-          ssh ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_CORE_IP }} \
-            "cd /home/${{ secrets.AIRFLOW_USER }}/airflow && \
-            echo 'AIRFLOW__LOGGING__REMOTE_LOGGING=True' > .env && \
-            echo 'AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER=s3://team6-batch' >> .env && \
-            echo 'AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID=aws_conn_id' >> .env && \
-            docker compose down && \
-            docker compose up -d --build"
+            ssh ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_CORE_IP }} \
+              "cd /home/${{ secrets.AIRFLOW_USER }}/airflow && \
+              echo 'AIRFLOW__LOGGING__REMOTE_LOGGING=True' > .env && \
+              echo 'AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER=s3://team6-batch' >> .env && \
+              echo 'AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID=aws_conn_id' >> .env && \
+              docker compose down && \
+              docker compose up -d --build"
+          fi
 
       - name: Deploy DAGs to Worker
         run: |
@@ -73,21 +86,22 @@ jobs:
             Dockerfile_Worker \
             ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_WORKER_IP }}:/home/${{ secrets.AIRFLOW_USER }}/airflow/Dockerfile &&
 
-          ssh ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_CORE_IP }} \
-            "cd /home/${{ secrets.AIRFLOW_USER }}/airflow && \
-            echo 'AIRFLOW__LOGGING__REMOTE_LOGGING=True' > .env && \
-            echo 'AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER=s3://team6-batch' >> .env && \
-            echo 'AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID=aws_conn_id' >> .env && \
-            echo 'SNOWFLAKE_ACCOUNT=${{ secrets.SNOWFLAKE_ACCOUNT }}' >> .env && \
-            echo 'SNOWFLAKE_USER=${{ secrets.SNOWFLAKE_USER }}' >> .env && \
-            echo 'SNOWFLAKE_PASSWORD=${{ secrets.SNOWFLAKE_PASSWORD }}' >> .env && \
-            echo 'SNOWFLAKE_ROLE=${{ secrets.SNOWFLAKE_ROLE }}' >> .env && \
-            echo 'SNOWFLAKE_WAREHOUSE=${{ secrets.SNOWFLAKE_WAREHOUSE }}' >> .env && \
-            echo 'SNOWFLAKE_DATABASE=${{ secrets.SNOWFLAKE_DATABASE }}' >> .env && \
-            echo 'SNOWFLAKE_SCHEMA=SILVER' >> .env && \
-            docker compose down && \
-            docker compose up -d --build && \
-            docker exec -it airflow-airflow-worker-1 bash -c 'source /opt/dbt_venv/bin/activate && cd /opt/dbt && dbt debug --profiles-dir /opt/dbt'"
+          ssh ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_CORE_IP }} "
+          cd /home/${{ secrets.AIRFLOW_USER }}/airflow && \
+          cat > .env <<EOL
+          AIRFLOW__LOGGING__REMOTE_LOGGING=True
+          AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER=s3://team6-batch
+          AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID=aws_conn_id
+          SNOWFLAKE_ACCOUNT=${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER=${{ secrets.SNOWFLAKE_USER }}
+          SNOWFLAKE_PASSWORD=${{ secrets.SNOWFLAKE_PASSWORD }}
+          SNOWFLAKE_ROLE=${{ secrets.SNOWFLAKE_ROLE }}
+          SNOWFLAKE_WAREHOUSE=${{ secrets.SNOWFLAKE_WAREHOUSE }}
+          SNOWFLAKE_DATABASE=${{ secrets.SNOWFLAKE_DATABASE }}
+          SNOWFLAKE_SCHEMA=SILVER
+          EOL
+          docker compose down && \
+          docker compose up -d --build && \"
             
       - name: Slack Notification (Always)
         if: always() # 성공/실패 여부와 상관없이 실행
