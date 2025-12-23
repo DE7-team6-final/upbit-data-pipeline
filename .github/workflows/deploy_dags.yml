@@ -90,7 +90,7 @@ jobs:
             Dockerfile_Worker \
             ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_WORKER_IP }}:/home/${{ secrets.AIRFLOW_USER }}/airflow/Dockerfile &&
 
-          ssh ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_CORE_IP }} "
+          ssh ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_WORKER_IP }} "
           cd /home/${{ secrets.AIRFLOW_USER }}/airflow && \
           cat > .env <<EOL
           AIRFLOW__LOGGING__REMOTE_LOGGING=True
