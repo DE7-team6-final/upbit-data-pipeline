@@ -20,27 +20,41 @@ load_dotenv(dotenv_path=Path(__file__).resolve().parents[1] / ".env")
 # =========================
 # Config
 # =========================
-Z_THRESHOLD = 1.75
+Z_THRESHOLD = 1.6
 INTERVAL = "1m"
 LOOKBACK_DAYS = 1
-MAX_ALERTS = 10
+MAX_ALERTS = 4    # Only 4 markets are tracked; cap alerts at one per coin
 
 SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
 
 
 QUERY = f"""
+WITH ranked AS (
+    SELECT
+        CODE,
+        CANDLE_INTERVAL,
+        CLOSE_PRICE,
+        ZSCORE,
+        ROW_NUMBER() OVER (
+            PARTITION BY CODE
+            ORDER BY ABS(ZSCORE) DESC
+        ) AS rn
+    FROM UPBIT_DB.GOLD.GOLD_CANDLE_WINDOW_METRICS
+    WHERE ABS(ZSCORE) >= {Z_THRESHOLD}
+      AND CANDLE_INTERVAL = '{INTERVAL}'
+      AND TRADE_DATE >= CURRENT_DATE() - {LOOKBACK_DAYS}
+)
+
 SELECT
     CODE,
-    CANDLE_INTERVAL,
     CLOSE_PRICE,
     ZSCORE
-FROM UPBIT_DB.GOLD.GOLD_CANDLE_WINDOW_METRICS
-WHERE ABS(ZSCORE) >= {Z_THRESHOLD}
-  AND CANDLE_INTERVAL = '{INTERVAL}'
-  AND TRADE_DATE >= CURRENT_DATE() - {LOOKBACK_DAYS}
+FROM ranked
+WHERE rn = 1
 ORDER BY ABS(ZSCORE) DESC
 LIMIT {MAX_ALERTS};
 """
+
 
 
 # =========================
@@ -92,8 +106,8 @@ def format_message(rows: List[Dict]) -> str:
     lines = [
         "📊 *Upbit Gold Anomaly Report (v2)*",
         "",
-        f"오늘 Z-score 기준 초과 코인: *{total_count}개*",
-        f"상위 {min(MAX_ALERTS, total_count)}개만 표시 (관측용 리포트)",
+        f"오늘 상대적 변동성 상위 코인 (1분 기준, 코인별 1건): *{total_count}개*",
+        f"상위 {min(MAX_ALERTS, total_count)}개 표시 (관측용 리포트)",
         "",
     ]
 
