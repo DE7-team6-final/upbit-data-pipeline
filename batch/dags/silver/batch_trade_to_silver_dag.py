@@ -199,7 +199,7 @@ with DAG(
     default_args=default_args,
     description="Load batch trade data from S3 into Snowflake Silver layer",
     schedule_interval="0 1 * * *",  # UTC 01:00 = KST 10:00
-    catchup=True,    # TEMP: enable backfill after Silver table recreation
+    catchup=False,    # Backfill completed
     max_active_runs=1,
     concurrency=1,
 ) as dag:
