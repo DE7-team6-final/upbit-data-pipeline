@@ -25,7 +25,7 @@ jobs:
         id: check_rebuild
         run: |
           git fetch origin dev --depth=2
-          if git diff --name-only origin/dev HEAD | grep -E 'Dockerfile|Dockerfile_Worker|requirements.txt'; then
+          if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E 'Dockerfile|Dockerfile_Worker|requirements.txt'; then
             echo "need_rebuild=true" >> $GITHUB_OUTPUT
           else
             echo "need_rebuild=false" >> $GITHUB_OUTPUT
