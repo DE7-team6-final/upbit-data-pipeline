@@ -112,6 +112,7 @@ def load_candles_to_snowflake(ds, **context):
         df = table.to_pandas()
 
         df["CANDLE_INTERVAL"] = get_candle_interval(key)
+        df["INGESTION_TIME"] = pd.Timestamp.utcnow().tz_localize(None)
 
         all_dataframes.append(df)
 
@@ -125,7 +126,7 @@ def load_candles_to_snowflake(ds, **context):
     unified_df = unified_df.rename(
         columns={
             "market": "CODE",
-            "candle_date_time_kst": "CANDLE_TS",
+            "timestamp": "CANDLE_TS",
             "opening_price": "OPEN_PRICE",
             "high_price": "HIGH_PRICE",
             "low_price": "LOW_PRICE",
@@ -134,22 +135,32 @@ def load_candles_to_snowflake(ds, **context):
         }
     )
 
+    # Explicit timestamp parsing (Upbit candle timestamp = epoch ms)
+    unified_df["CANDLE_TS"] = pd.to_datetime(
+        unified_df["CANDLE_TS"],
+        unit="ms",
+        utc=True,
+    )
 
-    # Derived Silver columns
-    unified_df["TRADE_PRICE"] = unified_df["CLOSE_PRICE"]
-
-    # CANDLE_TS: KST candle timestamp
-    unified_df["CANDLE_TS"] = pd.to_datetime(unified_df["CANDLE_TS"])
-    
     if unified_df["CANDLE_TS"].isna().any():
         raise ValueError("CANDLE_TS contains invalid values after parsing")
 
-    # TRADE_DATE: CANDLE_TS to date
-    unified_df["TRADE_DATE"] = unified_df["CANDLE_TS"].dt.date
+    # Derived Silver columns
+    unified_df["TRADE_PRICE"] = unified_df["CLOSE_PRICE"]
+    unified_df["TRADE_DATE"] = (
+        unified_df["CANDLE_TS"]
+        .dt.tz_convert("Asia/Seoul")
+        .dt.date
+    )
 
     # ============================
     # Snowflake write stabilization
     # ============================
+    unified_df["CANDLE_TS"] = (
+        unified_df["CANDLE_TS"]
+        .dt.tz_convert("UTC")
+        .dt.tz_localize(None)
+    )
 
     unified_df["SOURCE"] = "UPBIT_BATCH"
 
@@ -164,6 +175,7 @@ def load_candles_to_snowflake(ds, **context):
         "VOLUME",
         "TRADE_PRICE",
         "TRADE_DATE",
+        "INGESTION_TIME",
         "SOURCE",
     ]
 
