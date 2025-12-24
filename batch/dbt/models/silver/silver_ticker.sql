@@ -1,3 +1,4 @@
+
 {{ config(
     MATERIALIZED='incremental',
     unique_key=['code', 'trade_timestamp']
@@ -9,6 +10,7 @@ WITH source_data AS (
     {% if is_incremental() %}
         WHERE ingestion_time > (SELECT MAX(ingestion_time) FROM {{ this }})
     {% endif %}
+
 ),
 
 filtered_data AS (
