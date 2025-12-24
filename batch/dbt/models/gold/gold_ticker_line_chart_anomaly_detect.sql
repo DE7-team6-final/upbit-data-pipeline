@@ -26,7 +26,9 @@ metrics as (
         candle_interval,
         candle_time,
         zscore
+
     from {{ ref('gold_candle_window_metrics')}}
+
     WHERE candle_interval='1m'
     )
 

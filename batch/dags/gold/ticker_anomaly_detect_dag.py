@@ -26,5 +26,6 @@ with DAG(
             "/opt/dbt_venv/bin/dbt run "
             "--select gold_ticker_line_chart_anomaly_detect "
             
+
         ),
     )
