@@ -3,6 +3,7 @@ from airflow.operators.bash import BashOperator
 from datetime import datetime, timedelta
 from airflow.providers.snowflake.operators.snowflake import SnowflakeOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+import pendulum
 
 # 기본 설정
 default_args = {
@@ -19,7 +20,7 @@ with DAG(
     default_args=default_args,
     description='Update Silver Ticker table incrementally',
     schedule_interval='*/10 * * * *', 
-    start_date=datetime(2025, 12, 24),
+    start_date=pendulum.datetime(2025, 12, 24),
     catchup=False,
     tags=['dbt', 'silver', 'crypto'],
     max_active_runs=1

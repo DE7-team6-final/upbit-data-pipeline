@@ -41,7 +41,7 @@ select
 
     coalesce(m.zscore, 0) as z_score, --zscore가 없으면 0으로 처리 
     CASE 
-        WHEN abs(coalesce(m.zscore, 0)) > 0.05 then True --이상치 1.0 이상이면 점 찍음   
+        WHEN abs(coalesce(m.zscore, 0)) > 1 then True --이상치 1.0 이상이면 점 찍음   
         ELSE False 
     END as is_anomaly,
 
