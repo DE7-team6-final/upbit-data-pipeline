@@ -1,9 +1,0 @@
-version: 2
-
-sources:
-  - name: silver        
-    database: UPBIT_DB  
-    schema: SILVER     
-    tables:
-      - name: SILVER_CANDLES  
-      - name: BRONZE_TICKER   

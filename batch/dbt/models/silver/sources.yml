@@ -6,3 +6,4 @@ sources:
     schema: "{{ env_var('SNOWFLAKE_SCHEMA') }}"
     tables:
       - name: SILVER_CANDLES
+      - name: BRONZE_TICKER 
