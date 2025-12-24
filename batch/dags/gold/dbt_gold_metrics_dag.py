@@ -23,7 +23,7 @@ default_args = {
 }
 
 with DAG(
-    dag_id="dbt_gold_dag",
+    dag_id="dbt_gold_metrics",
     default_args=default_args,
     description="Run dbt Gold models (Silver → Gold)",
     schedule_interval="15 1 * * *",  # 01:15 UTC = 10:15 KST
@@ -36,10 +36,8 @@ with DAG(
     run_dbt_gold_models = BashOperator(
         task_id="run_dbt_gold_models",
         bash_command=(
-            "export HOME=/home/airflow && "
-            "cd /opt/airflow/batch/dbt && "
+            "cd /opt/dbt && "
             "/opt/dbt_venv/bin/dbt run "
             "--select gold "
-            "--profiles-dir /home/airflow/.dbt"
         ),
     )
