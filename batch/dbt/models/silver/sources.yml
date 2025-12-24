@@ -12,4 +12,4 @@ sources:
     database: "{{ env_var('SNOWFLAKE_DATABASE') }}"
     schema: RAW
     tables:
-      - name: RAW_STOCK_HISTORY
+      - name: raw_source_history
