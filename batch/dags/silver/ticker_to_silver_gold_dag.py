@@ -28,7 +28,9 @@ with DAG(
     
     load_upbit_data = SnowflakeOperator(
         task_id='load_upbit_data_to_snowflake',
-        snowflake_conn_id='snowflake_conn', 
+
+        snowflake_conn_id='snowflake_conn_id',
+
         sql="""
             COPY INTO SILVER_TICKER (
                 CODE, TRADE_PRICE, OPENING_PRICE, HIGH_PRICE, LOW_PRICE, PREV_CLOSING_PRICE,
