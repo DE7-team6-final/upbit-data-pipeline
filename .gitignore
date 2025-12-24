@@ -20,5 +20,11 @@ __pycache__/
 
 # Logs
 *.log
+target/
+dbt_modules/
+dbt_packages/
+logs/
+secrets.json
+
 gold_ticker_big_trade.sql
-batch/dbt/target/
+
