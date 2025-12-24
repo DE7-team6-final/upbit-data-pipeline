@@ -53,7 +53,7 @@ jobs:
           ssh ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_CORE_IP }} \
             "cd /home/${{ secrets.AIRFLOW_USER }}/airflow && \
             echo 'AIRFLOW__LOGGING__REMOTE_LOGGING=True' > .env && \
-            echo 'AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER=s3://team6-batch' >> .env && \
+            echo 'AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER=s3://team6-batch/airflow_logs/' >> .env && \
             echo 'AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID=aws_conn_id' >> .env && \
             docker compose down && \
             docker compose up -d --build"
@@ -94,7 +94,7 @@ jobs:
           cd /home/${{ secrets.AIRFLOW_USER }}/airflow && \
           cat > .env <<EOL
           AIRFLOW__LOGGING__REMOTE_LOGGING=True
-          AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER=s3://team6-batch
+          AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER=s3://team6-batch/airflow_logs/
           AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID=aws_conn_id
           SNOWFLAKE_ACCOUNT=${{ secrets.SNOWFLAKE_ACCOUNT }}
           SNOWFLAKE_USER=${{ secrets.SNOWFLAKE_USER }}
