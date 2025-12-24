@@ -118,7 +118,7 @@ def fetch_stock_prices(**context):
                         'code': stock['code'],
                         'name': stock['name'],
                         'market': stock['market'],
-                        'trade_date': bar['tymd'],      # 영업일자
+                        'trade_date': bar['tymd'],      # 영업일자 #dbt에서 kst변환 꼭 해야됨 
                         'trade_time': bar['xhms'],      # 체결시간(HHMMSS)
                         'open': float(bar['open']),     # 시가
                         'high': float(bar['high']),     # 고가
