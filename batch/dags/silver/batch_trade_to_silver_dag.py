@@ -22,8 +22,12 @@ import pandas as pd
 import io
 import pyarrow.parquet as pq
 import logging
+from SlackAlert import send_slack_failure_callback
 
 
+# -------------------------------------------------------------------
+# DAG default arguments
+# -------------------------------------------------------------------
 default_args = {
     "owner": "airflow",
     "depends_on_past": False,
@@ -32,14 +36,21 @@ default_args = {
     "email_on_retry": False,
     "retries": 1,
     "retry_delay": timedelta(minutes=5),
+    "on_failure_callback": send_slack_failure_callback,
 }
 
 
+# -------------------------------------------------------------------
+# Configuration
+# -------------------------------------------------------------------
 S3_BUCKET = "team6-batch"
 SNOWFLAKE_CONN_ID = "snowflake_conn_id"
 TARGET_TABLE = "SILVER_TRADES"
 
 
+# -------------------------------------------------------------------
+# Main task logic
+# -------------------------------------------------------------------
 def load_trades_to_snowflake(ds, **context):
     """
     Load daily trade parquet files from S3 into Snowflake Silver table.
@@ -59,12 +70,8 @@ def load_trades_to_snowflake(ds, **context):
     logging.info(f"Listing S3 objects with prefix: {prefix}")
 
     keys = s3_hook.list_keys(bucket_name=S3_BUCKET, prefix=prefix) or []
+    trade_files = [key for key in keys if "trade" in key]
 
-    # trade parquet filename may vary slightly depending on upstream
-    trade_files = [
-        key for key in keys
-        if key.endswith("trade.parquet") or "trade" in key
-    ]
     if not trade_files:
         logging.info("No trade files found for this execution date.")
         return
@@ -80,15 +87,12 @@ def load_trades_to_snowflake(ds, **context):
         table = pq.read_table(io.BytesIO(parquet_bytes))
         df = table.to_pandas()
 
-        # Debug: log raw columns
-        logging.debug(f"Raw trade columns: {df.columns.tolist()}")
-
         all_dataframes.append(df)
 
     unified_df = pd.concat(all_dataframes, ignore_index=True)
     logging.info(f"Total records loaded from S3: {len(unified_df)}")
 
-    # detect timestamp column (upstream schema may vary)
+    # Detect timestamp column (schema may vary upstream)
     if "trade_timestamp" in unified_df.columns:
         ts_col = "trade_timestamp"
     elif "timestamp" in unified_df.columns:
@@ -96,12 +100,7 @@ def load_trades_to_snowflake(ds, **context):
     else:
         raise ValueError("No timestamp column found in raw trade data")
 
-    raw_required = ["market", ts_col, "trade_price", "trade_volume"]
-    missing_raw = [c for c in raw_required if c not in unified_df.columns]
-    if missing_raw:
-        raise ValueError(f"Missing required raw columns: {missing_raw}")
-
-    # Raw → Silver mapping (Notion schema)
+    # Raw → Silver mapping
     unified_df = unified_df.rename(
         columns={
             "market": "CODE",
@@ -115,30 +114,40 @@ def load_trades_to_snowflake(ds, **context):
         }
     )
 
-    # Explicit timestamp parsing (epoch ms)
-    unified_df["TRADE_TS"] = pd.to_datetime(
+    # -------------------------------------------------------------------
+    # Timestamp handling
+    # -------------------------------------------------------------------
+    # Epoch(ms) → UTC tz-aware
+    ts_utc = pd.to_datetime(
         unified_df["TRADE_TS"],
         unit="ms",
         utc=True,
         errors="coerce",
     )
 
-    if unified_df["TRADE_TS"].isna().any():
-        raise ValueError("TRADE_TS contains invalid values after parsing")
+    bad_rows = ts_utc.isna().sum()
+    if bad_rows > 0:
+        raise ValueError(f"TRADE_TS contains invalid values after parsing: bad_rows={bad_rows}")
 
-    unified_df["TRADE_DATE"] = (
-        unified_df["TRADE_TS"]
-        .dt.tz_convert("Asia/Seoul")
-        .dt.date
-    )
+    # UTC → KST tz-aware
+    tz_kst = ts_utc.dt.tz_convert("Asia/Seoul")
 
-    # Ingestion and lineage
-    unified_df["INGESTION_TIME"] = datetime.utcnow()
-    unified_df["SOURCE"] = "batch_trade"
+    # TRADE_DATE: KST date
+    unified_df["TRADE_DATE"] = tz_kst.dt.date
 
-    # Optional columns may not exist depending on upstream
-    # If missing, create them as null to keep Snowflake insert consistent
-    optional_cols = ["PREV_CLOSING_PRICE", "CHANGE_PRICE", "ASK_BID", "SEQUENTIAL_ID"]
+    # TRADE_TS: KST timezone-naive (datetime for TIMESTAMP_NTZ)
+    unified_df["TRADE_TS"] = tz_kst.dt.tz_localize(None)
+
+    # Lineage
+    unified_df["SOURCE"] = "UPBIT_BATCH"
+
+    # Optional columns (ensure schema consistency)
+    optional_cols = [
+        "PREV_CLOSING_PRICE",
+        "CHANGE_PRICE",
+        "ASK_BID",
+        "SEQUENTIAL_ID",
+    ]
     for col in optional_cols:
         if col not in unified_df.columns:
             unified_df[col] = None
@@ -153,23 +162,20 @@ def load_trades_to_snowflake(ds, **context):
         "CHANGE_PRICE",
         "ASK_BID",
         "SEQUENTIAL_ID",
-        "INGESTION_TIME",
         "SOURCE",
     ]
-
-    missing = set(expected_columns) - set(unified_df.columns)
-    if missing:
-        raise ValueError(f"Missing expected columns: {missing}")
 
     unified_df = unified_df[expected_columns]
 
     logging.info("==== TRADE_DATE SAMPLE ====")
     logging.info(unified_df[["TRADE_TS", "TRADE_DATE"]].head().to_string())
-    logging.info("==== TRADE_DATE COUNTS ====")
-    logging.info(unified_df["TRADE_DATE"].value_counts().head().to_string())
 
+    # -------------------------------------------------------------------
+    # Snowflake write (append-only)
+    # -------------------------------------------------------------------
     conn = snowflake_hook.get_conn()
     cur = conn.cursor()
+    cur.execute("USE WAREHOUSE COMPUTE_WH")
     cur.execute("USE DATABASE UPBIT_DB")
     cur.execute("USE SCHEMA SILVER")
 
@@ -179,17 +185,21 @@ def load_trades_to_snowflake(ds, **context):
         table_name=TARGET_TABLE,
         database="UPBIT_DB",
         schema="SILVER",
+        use_logical_type=True,
     )
 
     logging.info(f"Snowflake write complete: success={success}, rows={nrows}")
 
 
+# -------------------------------------------------------------------
+# DAG definition
+# -------------------------------------------------------------------
 with DAG(
     dag_id="batch_trade_to_silver_dag",
     default_args=default_args,
     description="Load batch trade data from S3 into Snowflake Silver layer",
-    schedule_interval=None,
-    catchup=False,
+    schedule_interval="0 1 * * *",  # UTC 01:00 = KST 10:00
+    catchup=False,    # Backfill completed
     max_active_runs=1,
     concurrency=1,
 ) as dag:

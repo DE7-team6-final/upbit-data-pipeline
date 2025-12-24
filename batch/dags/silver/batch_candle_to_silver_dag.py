@@ -24,6 +24,7 @@ import pandas as pd
 import io
 import pyarrow.parquet as pq
 import logging
+from SlackAlert import send_slack_failure_callback
 
 # -------------------------------------------------------------------
 # DAG default arguments
@@ -36,6 +37,7 @@ default_args = {
     "email_on_retry": False,
     "retries": 1,
     "retry_delay": timedelta(minutes=5),
+    'on_failure_callback': send_slack_failure_callback
 }
 
 # -------------------------------------------------------------------
@@ -110,7 +112,6 @@ def load_candles_to_snowflake(ds, **context):
         df = table.to_pandas()
 
         df["CANDLE_INTERVAL"] = get_candle_interval(key)
-        df["INGESTION_TIME"] = datetime.utcnow()
 
         all_dataframes.append(df)
 
@@ -124,7 +125,7 @@ def load_candles_to_snowflake(ds, **context):
     unified_df = unified_df.rename(
         columns={
             "market": "CODE",
-            "timestamp": "CANDLE_TS",
+            "candle_date_time_kst": "CANDLE_TS",
             "opening_price": "OPEN_PRICE",
             "high_price": "HIGH_PRICE",
             "low_price": "LOW_PRICE",
@@ -133,24 +134,28 @@ def load_candles_to_snowflake(ds, **context):
         }
     )
 
-    # Explicit timestamp parsing (Upbit candle timestamp = epoch ms)
-    unified_df["CANDLE_TS"] = pd.to_datetime(
-        unified_df["CANDLE_TS"],
-        unit="ms",
-        utc=True,
-        errors="coerce",
-    )
-
-    if unified_df["CANDLE_TS"].isna().any():
-        raise ValueError("CANDLE_TS contains invalid values after parsing")
 
     # Derived Silver columns
     unified_df["TRADE_PRICE"] = unified_df["CLOSE_PRICE"]
-    unified_df["TRADE_DATE"] = (
-        unified_df["CANDLE_TS"]
-        .dt.tz_convert("Asia/Seoul")
-        .dt.date
-    )
+
+    unified_df["CANDLE_TS"] = pd.to_datetime(unified_df["CANDLE_TS"], errors="coerce")
+
+    bad_rows = unified_df["CANDLE_TS"].isna().sum()
+    if bad_rows > 0:
+        sample = unified_df.loc[unified_df["CANDLE_TS"].isna(), ["CODE", "CANDLE_INTERVAL"]].head(10)
+        raise ValueError(
+            f"CANDLE_TS contains invalid values after parsing: bad_rows={bad_rows}. "
+            f"Sample rows:\n{sample.to_string(index=False)}"
+        )
+
+
+    # TRADE_DATE: CANDLE_TS to date
+    unified_df["TRADE_DATE"] = unified_df["CANDLE_TS"].dt.date
+
+    # ============================
+    # Snowflake write stabilization
+    # ============================
+
     unified_df["SOURCE"] = "UPBIT_BATCH"
 
     expected_columns = [
@@ -164,7 +169,6 @@ def load_candles_to_snowflake(ds, **context):
         "VOLUME",
         "TRADE_PRICE",
         "TRADE_DATE",
-        "INGESTION_TIME",
         "SOURCE",
     ]
 
@@ -173,6 +177,9 @@ def load_candles_to_snowflake(ds, **context):
         raise ValueError(f"Missing expected columns: {missing}")
 
     unified_df = unified_df[expected_columns]
+
+    logging.info("CANDLE_TS is parsed from candle_date_time_kst (KST string) "
+    "and stored as timezone-naive datetime for TIMESTAMP_NTZ.")
 
     # -------------------------------------------------------------------
     # Debug logging (safe to keep for early production phase)
@@ -187,7 +194,7 @@ def load_candles_to_snowflake(ds, **context):
     # -------------------------------------------------------------------
     conn = snowflake_hook.get_conn()
     cur = conn.cursor()
-
+    cur.execute("USE WAREHOUSE COMPUTE_WH")
     cur.execute("USE DATABASE UPBIT_DB")
     cur.execute("USE SCHEMA SILVER")
 
@@ -197,6 +204,7 @@ def load_candles_to_snowflake(ds, **context):
         table_name=TARGET_TABLE,
         database="UPBIT_DB",
         schema="SILVER",
+        use_logical_type=True,
     )
 
     logging.info(
@@ -211,8 +219,8 @@ with DAG(
     dag_id="batch_candle_to_silver_dag",
     default_args=default_args,
     description="Load batch candle data from S3 into Snowflake Silver layer",
-    schedule_interval=None,
-    catchup=False,
+    schedule_interval="0 1 * * *",  # UTC 01:00 = KST 10:00
+    catchup=False,    # Backfill completed
     max_active_runs=1,
     concurrency=1,
 ) as dag:
