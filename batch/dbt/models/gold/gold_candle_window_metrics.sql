@@ -16,6 +16,7 @@ window_metrics as (
         code,
         candle_interval,
         trade_date,
+        candle_ts,
         close_price,
 
         avg(close_price) over (
@@ -40,6 +41,7 @@ zscore_calc as (
         code,
         candle_interval,
         trade_date,
+        candle_ts,
         close_price,
         ma_5,
         std_5,
