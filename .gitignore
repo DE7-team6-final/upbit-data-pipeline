@@ -20,3 +20,5 @@ __pycache__/
 
 # Logs
 *.log
+gold_ticker_big_trade.sql
+batch/dbt/target/
