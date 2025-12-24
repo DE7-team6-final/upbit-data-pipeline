@@ -36,10 +36,8 @@ with DAG(
     run_dbt_gold_models = BashOperator(
         task_id="run_dbt_gold_models",
         bash_command=(
-            "export HOME=/home/airflow && "
             "cd /opt/dbt && "
             "/opt/dbt_venv/bin/dbt run "
             "--select gold "
-            "--profiles-dir /home/airflow/.dbt"
         ),
     )
