@@ -26,5 +26,5 @@ dbt_packages/
 logs/
 secrets.json
 
-gold_ticker_big_trade.sql
+
 
