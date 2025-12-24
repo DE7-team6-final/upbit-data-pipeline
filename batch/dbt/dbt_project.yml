@@ -17,7 +17,9 @@ clean-targets:
 models:
   upbit_dbt:
     silver:
+      +schema: silver
       +materialized: table
 
     gold:
+      +schema: gold
       +materialized: table
