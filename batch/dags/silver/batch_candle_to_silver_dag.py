@@ -226,6 +226,6 @@ with DAG(
 ) as dag:
 
     load_candles_task = PythonOperator(
-        task_id="load_candles_to_snowflake",
+        task_id="load_candles_to_snowflake", 
         python_callable=load_candles_to_snowflake,
     )

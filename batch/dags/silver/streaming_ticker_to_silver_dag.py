@@ -18,8 +18,7 @@ with DAG(
     dag_id='dbt_silver_ticker_10min',
     default_args=default_args,
     description='Update Silver Ticker table incrementally',
-    # 10분마다 실행 (Gold 테이블보다 먼저 돌아야 하므로 스케줄 조정 필요 시 수정)
-    schedule='*/10 * * * *', 
+    schedule_interval='*/10 * * * *', 
     start_date=datetime(2025, 12, 24),
     catchup=False,
     tags=['dbt', 'silver', 'crypto'],
@@ -65,18 +64,11 @@ with DAG(
     # dbt run 실행 태스크
     run_silver_ticker = BashOperator(
         task_id='run_silver_ticker',
-        bash_command=(
-            # 1. dbt 프로젝트 폴더로 이동 (이전 대화 기반 경로)
+        bash_command=(            
             "cd /opt/airflow/dbt && "
-            
-            # 2. dbt 가상환경 실행 및 run 명령어
             "/opt/dbt_venv/bin/dbt run "
-            
-            # 3. 특정 모델만 선택 (파일명이 silver_ticker라고 가정)
             "--select silver_ticker "
             
-            # 4. profiles.yml 위치 지정 (현재 폴더)
-            "--profiles-dir /home/airflow/.dbt"
         )
     )
 
@@ -86,6 +78,6 @@ with DAG(
         wait_for_completion=False 
     )
 
-    # 순서 연결
+ 
     load_upbit_data >> run_silver_ticker >> trigger_anomaly_detect
 
