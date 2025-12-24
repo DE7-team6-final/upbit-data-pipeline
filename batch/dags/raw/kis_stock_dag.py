@@ -1,5 +1,6 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.providers.snowflake.hooks.snowflake import SnowflakeHook
 from airflow.models import Variable
 from datetime import datetime, timedelta
 import requests
@@ -62,6 +63,8 @@ def fetch_stock_prices(**context):
 
     kst = pytz.timezone('Asia/Seoul')
     now_kst = datetime.now(kst)
+
+
     target_date = (now_kst - timedelta(days=1)).strftime("%Y%m%d")
     print(f"수집 대상 날짜 (KST 전일): {target_date}")
 
@@ -115,7 +118,7 @@ def fetch_stock_prices(**context):
                         'code': stock['code'],
                         'name': stock['name'],
                         'market': stock['market'],
-                        'trade_date': bar['tymd'],      # 영업일자
+                        'trade_date': bar['tymd'],      # 영업일자 #dbt에서 kst변환 꼭 해야됨 
                         'trade_time': bar['xhms'],      # 체결시간(HHMMSS)
                         'open': float(bar['open']),     # 시가
                         'high': float(bar['high']),     # 고가
@@ -136,7 +139,7 @@ def fetch_stock_prices(**context):
                 last_bar = bars[-1]
                 
                 params["NEXT"] = "1" # 다음 페이지 조회 시 필수
-                # KEYB는 YYYYMMDD + HHMMSS (반드시 이전 응답의 마지막 데이터 기준)
+                
                 params["KEYB"] = (last_bar.get("xymd") or last_bar.get("tymd")) + last_bar.get("xhms")
 
 
@@ -171,14 +174,23 @@ def upload_to_s3(**context):
     # 필터링 적용
     df = df[df.apply(is_market_open, axis=1)]
     print(df.groupby('code')['trade_time'].count())
-    
-    now = datetime.now()
+
+    rename_map = {
+        'open': 'open_price',
+        'high': 'high_price',
+        'low': 'low_price',
+        'close': 'close_price'
+    }
+    df = df.rename(columns=rename_map)
+
+    raw_date = df['trade_date'].iloc[0]
+    formatted_date = f"{raw_date[:4]}-{raw_date[4:6]}-{raw_date[6:]}"
     file_name = "stock.parquet"
 
-    s3_key = f"yymmdd={now.strftime('%Y-%m-%d')}/{file_name}"
+    s3_key = f"yymmdd={formatted_date}/{file_name}" #하루 뒤로 조정해야됨 
     bucket_name = "team6-batch"  
 
-    # 메모리에서 Parquet 변환 후 업로드
+    
     out_buffer = BytesIO()
     df.to_parquet(out_buffer, index=False)
     s3_hook = S3Hook(aws_conn_id='aws_conn_id')
@@ -187,10 +199,36 @@ def upload_to_s3(**context):
         bytes_data=out_buffer.getvalue(),
         key=s3_key,
         bucket_name=bucket_name,
-        replace=True  # 덮어쓰기 허용 (재실행 시 에러 방지)
+        replace=True  
     )
     
     print(f"S3 업로드 완료: s3://{bucket_name}/{s3_key}")
+    return formatted_date
+
+def load_to_snowflake_via_hook(**context):
+   
+    target_date = context['task_instance'].xcom_pull(task_ids='save_to_s3_task')
+    s3_path = f"s3://team6-batch/yymmdd={target_date}/stock.parquet"
+    
+    # 2. Hook 연결
+    hook = SnowflakeHook(snowflake_conn_id='snowflake_conn_id')
+    
+    aws_hook = S3Hook(aws_conn_id='aws_conn_id')
+    credentials = aws_hook.get_credentials()
+    
+    sql = f"""
+    COPY INTO UPBIT_DB.SILVER.SILVER_STOCK
+    FROM '{s3_path}'
+    CREDENTIALS=(AWS_KEY_ID='{credentials.access_key}' AWS_SECRET_KEY='{credentials.secret_key}')
+    FILE_FORMAT=(TYPE='PARQUET', COMPRESSION='SNAPPY')
+    MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE
+    FORCE = TRUE
+    """
+    
+    print(f"Executing Query: \n{sql}") # 로그 확인용
+    
+    hook.run(sql)
+    print("Snowflake 적재 완료!")
 
 
 default_args = {
@@ -226,5 +264,10 @@ with DAG(
         python_callable=upload_to_s3
     )
 
+    t4 = PythonOperator(
+        task_id='load_to_snowflake_task',
+        python_callable=load_to_snowflake_via_hook
+    )
+
     # 순서 정의
-    t1 >> t2 >> t3
+    t1 >> t2 >> t3 >> t4
