@@ -16,7 +16,7 @@ default_args = {
 }
 
 with DAG(
-    dag_id='dbt_silver_ticker_10min',
+    dag_id='ticker_to_silver_gold_dag',
     default_args=default_args,
     description='Update Silver Ticker table incrementally',
     schedule_interval='*/10 * * * *', 

@@ -22,10 +22,9 @@ with DAG(
     run_dbt = BashOperator(
         task_id='dbt_run_gold',
          bash_command=(
-            "export HOME=/home/airflow && "
-            "cd /opt/airflow/dbt && "
+            "cd /opt/dbt && "
             "/opt/dbt_venv/bin/dbt run "
             "--select gold_ticker_line_chart_anomaly_detect "
-            "--profiles-dir /home/airflow/.dbt"
+            
         ),
     )
