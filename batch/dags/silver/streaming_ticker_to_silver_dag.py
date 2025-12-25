@@ -3,6 +3,7 @@ from airflow.operators.bash import BashOperator
 from datetime import datetime, timedelta
 from airflow.providers.snowflake.operators.snowflake import SnowflakeOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+from SlackAlert import send_slack_failure_callback
 
 # 기본 설정
 default_args = {
@@ -12,6 +13,7 @@ default_args = {
     'email_on_retry': False,
     'retries': 1,
     'retry_delay': timedelta(minutes=1),
+    'on_failure_callback': send_slack_failure_callback,
 }
 
 with DAG(
@@ -27,7 +29,7 @@ with DAG(
     
     load_upbit_data = SnowflakeOperator(
         task_id='load_upbit_data_to_snowflake',
-        snowflake_conn_id='snowflake_conn', 
+        snowflake_conn_id='snowflake_conn_id', 
         sql="""
             COPY INTO SILVER_TICKER (
                 CODE, TRADE_PRICE, OPENING_PRICE, HIGH_PRICE, LOW_PRICE, PREV_CLOSING_PRICE,
