@@ -1,11 +1,13 @@
 from airflow import DAG
 from airflow.operators.bash import BashOperator
 from datetime import datetime, timedelta
+from SlackAlert import send_slack_failure_callback
 
 default_args = {
     'owner': 'airflow',
     'retries': 1,
     'retry_delay': timedelta(minutes=1),
+    'on_failure_callback': send_slack_failure_callback,
 }
 
 with DAG(

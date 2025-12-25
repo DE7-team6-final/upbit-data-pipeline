@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from airflow.providers.snowflake.operators.snowflake import SnowflakeOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 import pendulum
+from SlackAlert import send_slack_failure_callback
 
 # 기본 설정
 default_args = {
@@ -13,6 +14,7 @@ default_args = {
     'email_on_retry': False,
     'retries': 1,
     'retry_delay': timedelta(minutes=1),
+    'on_failure_callback': send_slack_failure_callback,
 }
 
 with DAG(
