@@ -38,6 +38,6 @@ with DAG(
         bash_command=(
             "cd /opt/dbt && "
             "/opt/dbt_venv/bin/dbt run "
-            "--select gold "
+            "--select gold_candle_window_metrics "
         ),
     )
