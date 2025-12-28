@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from airflow.providers.snowflake.operators.snowflake import SnowflakeOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 import pendulum
-from SlackAlert import send_slack_failure_callback
+from batch.plugins.SlackAlert import send_slack_failure_callback
 
 # 기본 설정
 default_args = {
@@ -36,11 +36,10 @@ with DAG(
         sql="""
             BEGIN;
 
-            -- 1. 임시 테이블 생성 (기존 테이블 구조 복사, 데이터는 없음)
-            -- 세션 끝나면 사라지는 휘발성 테이블이라 빠름
+            -- 1. 임시 테이블 생성 
             CREATE OR REPLACE TEMPORARY TABLE TEMP_TICKER LIKE SILVER_TICKER;
 
-            -- 2. 임시 테이블에 일단 적재 (오늘 날짜 파일만)
+            -- 2. 임시 테이블에 일단 적재
             COPY INTO TEMP_TICKER (
                 CODE, TRADE_PRICE, OPENING_PRICE, HIGH_PRICE, LOW_PRICE, PREV_CLOSING_PRICE,
                 CHANGE, CHANGE_PRICE, CHANGE_RATE, 
@@ -67,21 +66,21 @@ with DAG(
                     TO_DATE($1:trade_date::VARCHAR, 'YYYYMMDD')
                 FROM @gcs_stage
             )
-            -- [성능 최적화] 오늘 날짜 파일만 스캔 (전체 스캔 방지)
+            --  오늘 날짜 파일만 스캔 
             PATTERN = '.*{{ ds_nodash }}.*.jsonl'
             ON_ERROR = CONTINUE;
 
-            -- 3. [핵심] MERGE INTO로 중복 제거 후 진짜 테이블에 넣기
+            
             MERGE INTO SILVER_TICKER AS T
             USING (
-                -- 임시 테이블 내에서도 혹시 모를 중복 제거 (Dedup)
+                
                 SELECT * FROM TEMP_TICKER
                 QUALIFY ROW_NUMBER() OVER (PARTITION BY CODE, TRADE_TIMESTAMP ORDER BY STREAM_TIME DESC) = 1
             ) AS S
             ON T.CODE = S.CODE 
            AND T.TRADE_TIMESTAMP = S.TRADE_TIMESTAMP -- PK 기준 비교
 
-            -- 매칭되는 게 없을 때만 INSERT (증분 업데이트)
+            
             WHEN NOT MATCHED THEN
                 INSERT (
                     CODE, TRADE_PRICE, OPENING_PRICE, HIGH_PRICE, LOW_PRICE, PREV_CLOSING_PRICE,
@@ -99,14 +98,12 @@ with DAG(
         """
     )
     
-
-    # dbt run 실행 태스크
     run_silver_ticker = BashOperator(
         task_id='run_silver_ticker',
         bash_command=(            
             "cd /opt/dbt && "
-            "/opt/dbt_venv/bin/dbt run "
-            "--select silver_ticker "
+            "source /opt/dbt_venv/bin/activate &&"
+            "dbt run --select silver_ticker "
             
         )
     )
@@ -116,7 +113,6 @@ with DAG(
         trigger_dag_id='ticker_anomaly_detect_dag', 
         wait_for_completion=False 
     )
-
  
     load_upbit_data >> run_silver_ticker >> trigger_anomaly_detect
 
