@@ -8,8 +8,4 @@ sources:
       - name: SILVER_CANDLES
       - name: BRONZE_TICKER
 
-  - name: raw
-    database: "{{ env_var('SNOWFLAKE_DATABASE') }}"
-    schema: RAW
-    tables:
-      - name: raw_stock_history
+
