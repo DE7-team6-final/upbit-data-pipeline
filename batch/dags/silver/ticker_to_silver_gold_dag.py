@@ -34,11 +34,18 @@ with DAG(
         snowflake_conn_id='snowflake_conn_id',
 
         sql="""
-            COPY INTO SILVER_TICKER (
+            BEGIN;
+
+            -- 1. 임시 테이블 생성 (기존 테이블 구조 복사, 데이터는 없음)
+            -- 세션 끝나면 사라지는 휘발성 테이블이라 빠름
+            CREATE OR REPLACE TEMPORARY TABLE TEMP_TICKER LIKE SILVER_TICKER;
+
+            -- 2. 임시 테이블에 일단 적재 (오늘 날짜 파일만)
+            COPY INTO TEMP_TICKER (
                 CODE, TRADE_PRICE, OPENING_PRICE, HIGH_PRICE, LOW_PRICE, PREV_CLOSING_PRICE,
                 CHANGE, CHANGE_PRICE, CHANGE_RATE, 
                 TRADE_VOLUME, ACC_TRADE_PRICE, ACC_TRADE_VOLUME, ASK_BID,
-                TRADE_TIMESTAMP, UPBIT_TIMESTAMP, STREAM_TIME, TRADE_DATE
+                TRADE_TIMESTAMP, STREAM_TIME, TRADE_DATE
             )
             FROM (
                 SELECT 
@@ -56,21 +63,48 @@ with DAG(
                     $1:acc_trade_volume::FLOAT,
                     $1:ask_bid::VARCHAR,
                     TO_TIMESTAMP_LTZ($1:trade_timestamp::NUMBER, 3), 
-                    TO_TIMESTAMP_LTZ($1:timestamp::NUMBER, 3),
                     TO_TIMESTAMP_LTZ($1:stream_time::NUMBER, 3),
                     TO_DATE($1:trade_date::VARCHAR, 'YYYYMMDD')
                 FROM @gcs_stage
             )
-            PATTERN = '.*.jsonl'
+            -- [성능 최적화] 오늘 날짜 파일만 스캔 (전체 스캔 방지)
+            PATTERN = '.*{{ ds_nodash }}.*.jsonl'
             ON_ERROR = CONTINUE;
+
+            -- 3. [핵심] MERGE INTO로 중복 제거 후 진짜 테이블에 넣기
+            MERGE INTO SILVER_TICKER AS T
+            USING (
+                -- 임시 테이블 내에서도 혹시 모를 중복 제거 (Dedup)
+                SELECT * FROM TEMP_TICKER
+                QUALIFY ROW_NUMBER() OVER (PARTITION BY CODE, TRADE_TIMESTAMP ORDER BY STREAM_TIME DESC) = 1
+            ) AS S
+            ON T.CODE = S.CODE 
+           AND T.TRADE_TIMESTAMP = S.TRADE_TIMESTAMP -- PK 기준 비교
+
+            -- 매칭되는 게 없을 때만 INSERT (증분 업데이트)
+            WHEN NOT MATCHED THEN
+                INSERT (
+                    CODE, TRADE_PRICE, OPENING_PRICE, HIGH_PRICE, LOW_PRICE, PREV_CLOSING_PRICE,
+                    CHANGE, CHANGE_PRICE, CHANGE_RATE, 
+                    TRADE_VOLUME, ACC_TRADE_PRICE, ACC_TRADE_VOLUME, ASK_BID,
+                    TRADE_TIMESTAMP, STREAM_TIME, TRADE_DATE
+                ) VALUES (
+                    S.CODE, S.TRADE_PRICE, S.OPENING_PRICE, S.HIGH_PRICE, S.LOW_PRICE, S.PREV_CLOSING_PRICE,
+                    S.CHANGE, S.CHANGE_PRICE, S.CHANGE_RATE, 
+                    S.TRADE_VOLUME, S.ACC_TRADE_PRICE, S.ACC_TRADE_VOLUME, S.ASK_BID,
+                    S.TRADE_TIMESTAMP, S.STREAM_TIME, S.TRADE_DATE
+                );
+
+            COMMIT;
         """
     )
+    
 
     # dbt run 실행 태스크
     run_silver_ticker = BashOperator(
         task_id='run_silver_ticker',
         bash_command=(            
-            "cd /opt/airflow/dbt && "
+            "cd /opt/dbt && "
             "/opt/dbt_venv/bin/dbt run "
             "--select silver_ticker "
             
