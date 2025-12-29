@@ -7,7 +7,6 @@
 with silver_candles as(
     select code,
         date_trunc('MINUTE', trade_timestamp) as candle_time,
-        --1분 내 가장 빠른 시간의 가격
         array_agg(trade_price) within group (order by trade_timestamp asc)[0]::float as open_price, 
         max(trade_price) as high_price,
         min(trade_price) as low_price,
@@ -24,7 +23,7 @@ with silver_candles as(
 metrics as (
     SELECT code,
         candle_interval,
-        candle_time,
+        candle_ts,
         zscore
 
     from {{ ref('gold_candle_window_metrics')}}

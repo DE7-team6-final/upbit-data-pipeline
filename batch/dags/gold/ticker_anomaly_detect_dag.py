@@ -25,9 +25,8 @@ with DAG(
         task_id='dbt_run_gold',
          bash_command=(
             "cd /opt/dbt && "
-            "/opt/dbt_venv/bin/dbt run "
-            "--select gold_ticker_line_chart_anomaly_detect "
+            "source /opt/dbt_venv/bin/activate && "
+            "dbt run --select gold_ticker_line_chart_anomaly_detect"
             
-
         ),
     )

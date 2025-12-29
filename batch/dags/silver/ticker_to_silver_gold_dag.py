@@ -102,9 +102,8 @@ with DAG(
         task_id='run_silver_ticker',
         bash_command=(            
             "cd /opt/dbt && "
-            "source /opt/dbt_venv/bin/activate &&"
-            "dbt run --select silver_ticker "
-            
+            "source /opt/dbt_venv/bin/activate && " 
+            "dbt run --select silver_ticker"    
         )
     )
 
