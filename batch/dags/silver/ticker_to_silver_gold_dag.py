@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from airflow.providers.snowflake.operators.snowflake import SnowflakeOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 import pendulum
-from batch.plugins.SlackAlert import send_slack_failure_callback
+from SlackAlert import send_slack_failure_callback
 
 # 기본 설정
 default_args = {
@@ -39,7 +39,7 @@ with DAG(
             -- 1. 임시 테이블 생성 
             CREATE OR REPLACE TEMPORARY TABLE TEMP_TICKER LIKE SILVER_TICKER;
 
-            -- 2. 임시 테이블에 일단 적재
+            -- 2. 임시 테이블에 적재
             COPY INTO TEMP_TICKER (
                 CODE, TRADE_PRICE, OPENING_PRICE, HIGH_PRICE, LOW_PRICE, PREV_CLOSING_PRICE,
                 CHANGE, CHANGE_PRICE, CHANGE_RATE, 
@@ -103,7 +103,8 @@ with DAG(
         bash_command=(            
             "cd /opt/dbt && "
             "source /opt/dbt_venv/bin/activate && " 
-            "dbt run --select silver_ticker"    
+            "dbt run --select silver_ticker"
+            
         )
     )
 
