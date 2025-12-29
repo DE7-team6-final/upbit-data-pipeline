@@ -70,9 +70,15 @@ with DAG(
     run_silver_ticker = BashOperator(
         task_id='run_silver_ticker',
         bash_command=(            
+<<<<<<< Updated upstream
             "cd /opt/airflow/dbt && "
             "/opt/dbt_venv/bin/dbt run "
             "--select silver_ticker "
+=======
+            "cd /opt/dbt && "
+            "source /opt/dbt_venv/bin/activate && " 
+            "dbt run --select silver_ticker "
+>>>>>>> Stashed changes
             
         )
     )
