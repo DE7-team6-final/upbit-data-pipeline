@@ -52,4 +52,6 @@ select
 from silver_candles s
 left join metrics m 
     on s.code=m.code
-    and s.candle_time = m.candle_time
+
+    and s.candle_time= m.candle_ts
+
