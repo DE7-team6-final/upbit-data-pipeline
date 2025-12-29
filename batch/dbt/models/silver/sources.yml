@@ -1,12 +1,6 @@
 version: 2
 
 sources:
-  - name: raw
-    database: "{{ env_var('SNOWFLAKE_DATABASE') }}"
-    schema: RAW
-    tables:
-      - name: raw_stock_history
-
   - name: silver
     database: "{{ env_var('SNOWFLAKE_DATABASE') }}"
     schema: "{{ env_var('SNOWFLAKE_SCHEMA') }}"

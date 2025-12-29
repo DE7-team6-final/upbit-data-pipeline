@@ -1,16 +1,20 @@
 """
-Alert Worker v1
+Streaming Price & Volume Alert
 
-- Reads Upbit ticker JSONL from GCS
-- Aggregates ticks into 1-minute bars (close price, volume sum)
-- Compares current 1-minute bar vs SMA of last 5 minutes
-- Sends observation-only alerts to Slack
+- Source: Upbit ticker JSONL stored in GCS
+- Processing: Aggregate ticker events into 1-minute bars (price, volume)
+- Logic: Compare current 1-minute bar against recent SMA baseline
+- Mode: Real-time / near-real-time (polling GCS)
+- Purpose: Detect short-term price spikes and volume spikes separately
+            and notify via Slack
 
-v1 goals:
+
+Design goals:
 - Minimize false positives
-- Simple, explainable logic
-- No changes to streaming consumer
+- Simple, explainable rules
+- Independent from batch / Gold pipeline
 """
+
 
 import os
 import json
@@ -24,11 +28,11 @@ from google.cloud import storage
 
 
 # =========================
-# Config (v1 fixed)
+# Config (Streaming alert)
 # =========================
 WINDOW_MINUTES = 5
-PRICE_THRESHOLD = 0.015      # ±1.5%
-VOLUME_MULTIPLIER = 1.5     # 1.5x
+PRICE_THRESHOLD = 0.02      # ±2.0%
+VOLUME_MULTIPLIER = 4.5     # 4.5x
 COOLDOWN_SECONDS = 10 * 60
 POLL_SECONDS = 10
 
@@ -153,6 +157,37 @@ def send_slack(webhook: str, message: str):
     response = requests.post(webhook, json=payload, timeout=5)
     if response.status_code != 200:
         raise RuntimeError(f"Slack notification failed: {response.text}")
+    
+
+def send_price_spike_alert(
+    webhook: str,
+    market: str,
+    price_change: float,
+    minute: int,
+):
+    message = (
+        f"🚨 *Price Spike Alert (Streaming)*\n"
+        f"Market: `{market}`\n"
+        f"Price change: {price_change:.2%}\n"
+        f"Time (KST): {minute_to_str(minute)}"
+    )
+    send_slack(webhook, message)
+
+
+def send_volume_spike_alert(
+    webhook: str,
+    market: str,
+    volume_ratio: float,
+    minute: int,
+):
+    message = (
+        f"📊 *Volume Spike Alert (Streaming)*\n"
+        f"Market: `{market}`\n"
+        f"Volume ratio: {volume_ratio:.2f}x\n"
+        f"Time (KST): {minute_to_str(minute)}"
+    )
+    send_slack(webhook, message)
+
 
 # =========================
 # Alert Worker
@@ -308,23 +343,37 @@ class AlertWorker:
         price_change = (bar["close_price"] - avg_price) / avg_price
         volume_ratio = bar["volume"] / avg_volume
 
-        # if price OR volume condition met and not in cooldown:
-        if (abs(price_change) >= PRICE_THRESHOLD or volume_ratio >= VOLUME_MULTIPLIER) \
-                and not self.in_cooldown(market):
-            
-            message = (
-                f"🚨 *Streaming Alert (v1)*\n"
-                f"Market: `{market}`\n"
-                f"Price change: {price_change:.2%}\n"
-                f"Volume ratio: {volume_ratio:.2f}\n"
-                f"Time (KST): {minute_to_str(bar['minute'])}"
-            )
+        price_hit = abs(price_change) >= PRICE_THRESHOLD
+        volume_hit = volume_ratio >= VOLUME_MULTIPLIER
 
-            #   print alert (dry-run)
-            print(f"ALERT: {market} - {bar} (price_change: {price_change}, volume_ratio: {volume_ratio})")
-            send_slack(self.slack_webhook, message)
-            #   set cooldown
+        if price_hit and not self.in_cooldown(market):
+            print(
+                f"[Price Spike] {market} "
+                f"price_change={price_change:.2%} "
+                f"time={minute_to_str(bar['minute'])}"
+            )
+            send_price_spike_alert(
+                self.slack_webhook,
+                market,
+                price_change,
+                bar["minute"],
+            )
             self.set_cooldown(market)
+
+        if volume_hit and not self.in_cooldown(market):
+            print(
+                f"[Volume Spike] {market} "
+                f"volume_ratio={volume_ratio:.2f} "
+                f"time={minute_to_str(bar['minute'])}"
+            )
+            send_volume_spike_alert(
+                self.slack_webhook,
+                market,
+                volume_ratio,
+                bar["minute"],
+            )
+            self.set_cooldown(market)
+
 
     def run(self):
         """

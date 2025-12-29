@@ -2,11 +2,11 @@ from airflow import DAG
 from airflow.decorators import task
 
 from BatchPlugin import transform_and_load_to_s3
-from BatchPlugin import BASE_URL, MARKETS, DEFAULT_PARAMS
+from BatchPlugin import BASE_URL, DEFAULT_PARAMS
 from SlackAlert import send_slack_failure_callback
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 import requests
 import time
 
@@ -39,6 +39,7 @@ with DAG(
         url = BASE_URL + 'trades/ticks'
         params = DEFAULT_PARAMS.copy()
         params['market'] = 'KRW-BTC'
+        params['to'] = 170000
         params['count'] = 500
         params['cursor'] = None
         params['days_ago'] = 1
