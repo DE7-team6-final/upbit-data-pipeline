@@ -7,5 +7,7 @@ sources:
     tables:
       - name: SILVER_CANDLES
       - name: BRONZE_TICKER
+      - name: SILVER_STOCK
+      
 
 
