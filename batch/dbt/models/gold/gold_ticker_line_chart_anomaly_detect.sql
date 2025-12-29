@@ -33,7 +33,7 @@ metrics as (
 
 select
     s.code,
-    s.candle_time,
+    s.candle_ts,
     s.open_price,
     s.high_price,
     s.low_price,
@@ -51,4 +51,4 @@ select
 from silver_candles s
 left join metrics m 
     on s.code=m.code
-    and s.candle_time = m.candle_time
+    and s.candle_ts= m.candle_ts
