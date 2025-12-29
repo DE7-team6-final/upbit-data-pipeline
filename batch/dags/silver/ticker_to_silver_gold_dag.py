@@ -113,6 +113,12 @@ with DAG(
         trigger_dag_id='ticker_anomaly_detect_dag', 
         wait_for_completion=False 
     )
+
+    trigger_stock_gold = TriggerDagRunOperator(
+        task_id = 'trigger_stock_gold',
+        trigger_dag_id='stock_gold_dag',
+        wait_for_completion=False
+    )
  
-    load_upbit_data >> run_silver_ticker >> trigger_anomaly_detect
+    load_upbit_data >> run_silver_ticker >> ( trigger_anomaly_detect, trigger_stock_gold)
 
