@@ -33,7 +33,7 @@ metrics as (
 
 select
     s.code,
-    s.candle_ts,
+    s.candle_time,
     s.open_price,
     s.high_price,
     s.low_price,
