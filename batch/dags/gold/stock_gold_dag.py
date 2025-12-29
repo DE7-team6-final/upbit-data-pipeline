@@ -27,6 +27,5 @@ with DAG(
             "cd /opt/dbt && "
             "source /opt/dbt_venv/bin/activate && "
             "dbt run --select gold_stock_ticker_trend gold_correlation_matrix"
-            
         ),
     )
