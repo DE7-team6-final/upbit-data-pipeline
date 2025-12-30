@@ -6,7 +6,7 @@ with stock_returns as (
         CLOSE_PRICE,
         (CLOSE_PRICE - LAG(CLOSE_PRICE) OVER (PARTITION BY CODE ORDER BY TRADE_DATE, TRADE_TIME)) 
         / NULLIF(LAG(CLOSE_PRICE) OVER (PARTITION BY CODE ORDER BY TRADE_DATE, TRADE_TIME),0) AS UPDOWN_RATE
-    FROM {{ source('silver', 'silver_stock') }}
+    FROM {{ source('silver', 'SILVER_STOCK') }}
 ),
 
 ticker_returns as (

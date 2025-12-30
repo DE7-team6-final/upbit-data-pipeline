@@ -6,7 +6,7 @@ with stock_1min as (
         to_timestamp(trade_date || trade_time, 'YYYYMMDDHH24MISS') AS candle_time,
         CLOSE_PRICE as price,
         VOLUME as volume
-    from {{ source('silver', 'silver_stock') }}
+    from {{ source('silver', 'SILVER_STOCK') }}
 ),
 
 ticker_1min as (
