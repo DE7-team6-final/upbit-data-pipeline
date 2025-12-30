@@ -11,7 +11,7 @@ default_args = {
 }
 
 with DAG(
-    'stock_gold_dag',
+    'stock_gold_and_big_ticker_dag',
     default_args=default_args,
     description='Run dbt gold models every 10 mins',
     schedule_interval=None,  # 10분마다 실행
@@ -26,6 +26,6 @@ with DAG(
          bash_command=(
             "cd /opt/dbt && "
             "source /opt/dbt_venv/bin/activate && "
-            "dbt run --select gold_stock_ticker_trend gold_correlation_matrix"
+            "dbt run --select gold_stock_ticker_trend gold_correlation_matrix gold_ticker_big_trade"
         ),
     )
