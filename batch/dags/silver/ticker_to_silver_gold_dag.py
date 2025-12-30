@@ -116,7 +116,7 @@ with DAG(
 
     trigger_stock_gold = TriggerDagRunOperator(
         task_id = 'trigger_stock_gold',
-        trigger_dag_id='stock_gold_dag',
+        trigger_dag_id='stock_gold_and_big_ticker_dag',
         wait_for_completion=False
     )
  
