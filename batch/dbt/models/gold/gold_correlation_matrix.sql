@@ -41,4 +41,4 @@ select
 from joined_data
 group by 1, 2
 having count(*) > 10
-order by 3 desc ;
+order by 3 desc 
