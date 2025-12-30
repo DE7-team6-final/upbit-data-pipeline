@@ -8,3 +8,5 @@ sources:
       - name: BRONZE_TICKER    
       - name: SILVER_CANDLES
       - name: SILVER_TRADES
+      - name: SILVER_STOCK
+      

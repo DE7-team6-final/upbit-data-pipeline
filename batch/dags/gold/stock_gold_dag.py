@@ -11,11 +11,11 @@ default_args = {
 }
 
 with DAG(
-    'ticker_anomaly_detect_dag',
+    'stock_gold_dag',
     default_args=default_args,
     description='Run dbt gold models every 10 mins',
     schedule_interval=None,  # 10분마다 실행
-    start_date=datetime(2025, 12, 24),
+    start_date=datetime(2025, 12, 29),
     catchup=False,
     max_active_runs=1 # 이전 작업 안 끝나면 대기
 ) as dag:
@@ -26,7 +26,6 @@ with DAG(
          bash_command=(
             "cd /opt/dbt && "
             "source /opt/dbt_venv/bin/activate && "
-            "dbt run --select gold_ticker_line_chart_anomaly_detect"
-            
+            "dbt run --select gold_stock_ticker_trend gold_correlation_matrix"
         ),
     )
