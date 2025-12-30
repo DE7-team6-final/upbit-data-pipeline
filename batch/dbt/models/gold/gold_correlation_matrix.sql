@@ -2,7 +2,7 @@ with stock_returns as (
     select
         CODE,
         NAME,
-        to_timestamp(trade_date:VARCHAR || LPAD(trade_time::VARCHAR,6,'0'), 'YYYYMMDDHH24MISS') AS candle_time,
+        to_timestamp(trade_date::VARCHAR || LPAD(trade_time::VARCHAR,6,'0'), 'YYYYMMDDHH24MISS') AS candle_time,
         CLOSE_PRICE,
         (CLOSE_PRICE - LAG(CLOSE_PRICE) OVER (PARTITION BY CODE ORDER BY TRADE_DATE, TRADE_TIME)) 
         / NULLIF(LAG(CLOSE_PRICE) OVER (PARTITION BY CODE ORDER BY TRADE_DATE, TRADE_TIME),0) AS UPDOWN_RATE
