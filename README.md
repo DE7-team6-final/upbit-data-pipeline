@@ -12,7 +12,7 @@ Upbit WebSocket 스트리밍과 REST 기반 배치 수집을 통해
 
 [![Demo Video](https://img.youtube.com/vi/Nv62ItVWKBU/0.jpg)](https://youtu.be/Nv62ItVWKBU)
 
-Short demo (16s):  
+▶️ Click to watch the short demo (16s):  
 Real-time streaming alerts and Gold-based daily volatility analytics
 
 ---
