@@ -3,6 +3,8 @@ name: Deploy Consumer
 on:
   push:
     branches: [ dev, main ]
+    paths:
+      - 'streaming/consumer/**'
 
 jobs:
   deploy:
