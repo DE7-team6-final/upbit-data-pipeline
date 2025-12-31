@@ -51,36 +51,39 @@ Real-time streaming alerts and analytics pipeline overview
 ## 📁 Directory Structure
 ```markdown
 upbit-data-pipeline/
-├── streaming/          # Upbit WebSocket → Redpanda → GCS
-│   ├── producer/       # 실시간 데이터 수집
-│   └── consumer/       # GCS 적재용 Consumer (Linux-based managed execution)
+├── streaming/              # Real-time data ingestion
+│   ├── producer/           # Upbit WebSocket producer
+│   └── consumer/           # Streaming consumer → GCS (Linux-based service management)
 │
-├── alerts/             # 실시간 이상변동 알림, 일일 변동성 요약 리포트
+├── alerts/                 # Monitoring & alert workers
+│                           # 실시간 이상 변동 알림 / 일일 변동성 리포트
 │
-├── batch/              # Airflow → Snowflake 배치 파이프라인
-│   ├── dags/
-│   │   ├── gold/
-│   │   └── silver/
-│   ├── dbt/
-│   │   ├── macros/
-│   │   └── models/
-│   │       ├── gold/
-│   │       └── silver/
-│   └── plugins/
+├── airflow/                # Batch orchestration (Airflow)
+│   ├── dags/               # Medallion architecture DAGs
+│   │   ├── raw/            # Raw data ingestion DAGs
+│   │   ├── silver/         # Data cleaning & transformation DAGs
+│   │   └── gold/           # Analytics & metrics DAGs
+│   └── plugins/            # Custom Airflow plugins (Slack, batch utils)
 │
-├── docs/               # 설계 문서, 스키마 정의, 운영 기록
-│   ├── conventions/
-│   └── schema/
+├── dbt/                    # Transform layer (ELT)
+│   ├── models/
+│   │   ├── silver/         # Cleaned intermediate models
+│   │   └── gold/           # Analytics-ready models
+│   └── macros/             # Shared dbt macros
 │
-├── .github/
-│   └── workflows/            # CI/CD 설정
+├── docs/                   # Design docs & decisions
+│   ├── adr/                # Architectural Decision Records
+│   └── architecture/       # Pipeline & system architecture
 │
-├── pyproject.toml
-├── requirements.txt
-├── .gitignore
-├── .pre-commit-config.yaml
+├── infra/                  # Cloud context
+│   ├── aws/                # AWS usage notes
+│   └── gcp/                # GCP usage notes
+│
 ├── Dockerfile
 ├── Dockerfile_Worker
+├── pyproject.toml
+├── requirements.txt
 └── README.md
+
 ```
 
