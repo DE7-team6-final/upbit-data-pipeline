@@ -70,7 +70,7 @@ jobs:
 
           rsync -avz \
             --rsync-path="sudo rsync" \
-            airflow/dbt \
+            dbt/ \
             ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_WORKER_IP }}:/home/${{ secrets.AIRFLOW_USER }}/ &&
 
           ssh ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_WORKER_IP }} "
