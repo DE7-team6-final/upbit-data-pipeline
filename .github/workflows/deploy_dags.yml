@@ -35,10 +35,10 @@ jobs:
         run: |
           rsync -avz \
             --rsync-path="sudo rsync" \
-            batch/dags/raw/ \
-            batch/dags/silver/ \
-            batch/dags/gold/ \
-            batch/plugins/ \
+            airflow/dags/raw/ \
+            airflow/dags/silver/ \
+            airflow/dags/gold/ \
+            airflow/plugins/ \
             ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_CORE_IP }}:/home/${{ secrets.AIRFLOW_USER }}/airflow/dags/
 
       - name: Rebuild Core
@@ -62,15 +62,15 @@ jobs:
         run: |
           rsync -avz \
             --rsync-path="sudo rsync" \
-            batch/dags/raw/ \
-            batch/dags/silver/ \
-            batch/dags/gold/ \
-            batch/plugins/ \
+            airflow/dags/raw/ \
+            airflow/dags/silver/ \
+            airflow/dags/gold/ \
+            airflow/plugins/ \
             ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_WORKER_IP }}:/home/${{ secrets.AIRFLOW_USER }}/airflow/dags/ &&
 
           rsync -avz \
             --rsync-path="sudo rsync" \
-            batch/dbt \
+            airflow/dbt \
             ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_WORKER_IP }}:/home/${{ secrets.AIRFLOW_USER }}/ &&
 
           ssh ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_WORKER_IP }} "
