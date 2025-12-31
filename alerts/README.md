@@ -1,52 +1,56 @@
-# Alert Worker v1
+# Alert System Overview
 
-GCS에 적재된 Upbit 실시간 ticker JSONL 데이터를 읽어
-1분 단위로 집계하고,
-SMA 기반 규칙으로 이상변동을 감지하는 Alert Worker입니다.
-
-Streaming Consumer와 분리된 독립 컴포넌트로,
-운영 안정성을 우선해 설계되었습니다.
+이 문서는 현재 프로젝트에서 사용 중인 Alert 시스템의 목적과 역할을 정리한 문서입니다.
+버전(v1 / v2)은 구현 시점의 구분이며, 각 알림은 성격과 사용 목적에 따라 명확히 분리되어 설계되었습니다.
 
 ---
 
-## 역할
+## v1 · Streaming Alert (Real-time)
 
-- GCS(JSONL) 기반 실시간 데이터 처리
-- 1분 bar aggregation (close price, volume)
-- 최근 N분(SMA) 대비 가격/거래량 이상 감지
-- Slack 알림 전송
-- checkpoint 기반 중복 처리 방지
+실시간 스트리밍 데이터를 기반으로 즉각적인 이상 징후를 감지하고 알림을 전송하는 Alert입니다.
+
+### 주요 특징
+
+* **Price Spike Alert**
+
+  * 1분 기준 가격이 절대값 기준으로 급격히 변동한 경우 감지
+
+* **Volume Spike Alert**
+
+  * 가격 변화는 크지 않지만 거래량이 비정상적으로 급증한 경우 감지
+
+* 두 신호는 의미와 성격이 다르기 때문에 **분리된 조건과 알림 로직**으로 처리
+
+* threshold 값은 이론적 설정이 아닌 **실제 운영 로그 분석 결과를 기반으로 고정**
+
+### 목적
+
+* 시장에서 발생하는 급격한 변동을 빠르게 인지
+* 실시간 대응 또는 모니터링을 위한 즉각적인 신호 제공
 
 ---
 
-## 실행 방식
+## v2 · Daily Volatility Report
 
-### 환경 변수
+일 단위 집계 데이터를 기반으로 상대적인 변동성을 요약하여 제공하는 리포트형 Alert입니다.
 
-```bash
-export GCS_BUCKET=upbit-streaming
-export GCS_PREFIX=ticker/dt=YYYY-MM-DD/
-export SLACK_WEBHOOK=...
-```
+### 주요 특징
 
-### 수동 실행
+* Gold 테이블을 기반으로 **일일 변동성 지표 집계**
 
-```bash
-python alert_worker.py
-```
+* Z-score는 내부 계산 및 랭킹 용도로만 사용
 
-### systemd 실행
+* 사용자에게는 **percentile 값만 노출**하여 직관적인 해석 제공
 
-Alert Worker는 systemd 서비스로 등록되어 있으며,
-VM 재부팅 및 서비스 재시작 시 자동 실행됩니다.
+### 목적
 
-```
-systemctl status alert-worker.service
-journalctl -u alert-worker.service -f
-```
+* 당일 시장 움직임이 평소 대비 **얼마나 드문 변동이었는지** 설명
+* 실시간 대응보다는 **시장 관측 및 요약 리포트** 성격에 초점
 
-## Timestamp 기준
+---
 
-실시간 이상변동 판단은 처리 시점이 아닌
-실제 시장 체결 시점을 기준으로 해야 한다고 판단해,
-aggregation 기준 timestamp로 ```trade_timestamp```를 사용합니다.
+## 설계 요약
+
+* v1과 v2는 동일한 데이터를 다른 관점에서 해석
+* v1은 **즉시성**, v2는 **맥락과 상대성**에 초점
+* 실시간 Alert와 일일 리포트를 분리하여 알림 피로도 감소 및 정보 전달력 향상
