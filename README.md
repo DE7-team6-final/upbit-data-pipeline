@@ -16,6 +16,26 @@ Upbit WebSocket 스트리밍과 REST 기반 배치 수집을 통해
 Real-time streaming alerts and analytics pipeline overview
 
 ---
+
+## 🧠 Key Architectural Decisions (ADR)
+
+본 프로젝트는 단순 기능 구현이 아니라,  
+**운영 안정성과 설명 가능성**을 중심으로 설계 결정을 내렸습니다.
+
+주요 아키텍처 설계 결정은 다음과 같습니다.
+
+- 실시간 스트리밍 처리와 배치 분석 파이프라인을 의도적으로 분리
+- 실시간 알림(v1)은 자동 대응이 아닌 **관측용(Alerting)** 으로 한정
+- 배치 기반 일일 요약 알림(v2)을 별도 파이프라인으로 분리
+- 애플리케이션 로직이 아닌 **systemd 서비스 상태 기반 운영 알림** 구성
+- 제한된 리소스를 고려하여 Kafka 대신 **Redpanda(Kafka-compatible)** 선택
+- Streaming Producer와 Consumer를 **물리적으로 분리된 VM**에서 운영
+
+👉 상세한 설계 배경과 트레이드오프는 팀 Notion의  
+[**주요 아키텍처 설계 결정 (ADR)**](https://www.notion.so/ADR-2da6e9180a9680e1b9b0f40a60f161bb?source=copy_link) 문서에 정리되어 있습니다.
+
+
+---
 ## 📁 Directory Structure
 ```markdown
 upbit-data-pipeline/
