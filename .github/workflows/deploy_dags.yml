@@ -61,17 +61,19 @@ jobs:
       - name: Deploy DAGs to Worker
         run: |
           rsync -avz \
-            --rsync-path="sudo rsync" \
             airflow/dags/raw/ \
             airflow/dags/silver/ \
             airflow/dags/gold/ \
             airflow/plugins/ \
-            ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_WORKER_IP }}:/home/${{ secrets.AIRFLOW_USER }}/airflow/dags/ &&
-
+            ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_WORKER_IP }}:/home/${{ secrets.AIRFLOW_USER }}/airflow/dags/
+            
           rsync -avz \
-            --rsync-path="sudo rsync && sudo chown -R 1000:0 /home/${{ secrets.AIRFLOW_USER }}/dbt && sudo chmod -R 2775 /home/${{ secrets.AIRFLOW_USER }}/dbt" \
             dbt/ \
             ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_WORKER_IP }}:/home/${{ secrets.AIRFLOW_USER }}/dbt
+
+          ssh ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_WORKER_IP }} "
+            sudo chown -R 1000:0 /home/${{ secrets.AIRFLOW_USER }}/dbt &&
+            sudo chmod -R 2775 /home/${{ secrets.AIRFLOW_USER }}/dbt"
 
       - name: Rebuild Worker
         if: steps.check_rebuild.outputs.need_rebuild == 'true'
