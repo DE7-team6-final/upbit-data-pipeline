@@ -6,6 +6,11 @@ Upbit WebSocket 스트리밍과 REST 기반 배치 수집을 통해
 실시간 처리와 배치 처리를 의도적으로 분리한 구조로,
 운영 안정성과 장애 격리, 확장성을 고려한 아키텍처를 목표로 합니다.
 
+
+> This is a team-built data engineering project that implements a real-time and batch data pipeline using Upbit WebSocket streaming and REST-based batch ingestion.
+>  
+> The architecture intentionally separates streaming and batch processing to improve operational stability, fault isolation, and scalability, while supporting real-time anomaly alerts and analytics-ready data.
+
 ---
 
 ## 🎬 Demo
