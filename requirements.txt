@@ -1,8 +1,8 @@
 websockets
 confluent-kafka
 
-google-cloud-storage
 requests
+google-cloud-storage
 
 apache-airflow-providers-snowflake
 apache-airflow-providers-amazon
