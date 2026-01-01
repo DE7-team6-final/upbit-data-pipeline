@@ -61,6 +61,7 @@ jobs:
       - name: Deploy DAGs to Worker
         run: |
           rsync -avz \
+          --rsync-path="sudo rsync" \
             airflow/dags/raw/ \
             airflow/dags/silver/ \
             airflow/dags/gold/ \
@@ -68,6 +69,7 @@ jobs:
             ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_WORKER_IP }}:/home/${{ secrets.AIRFLOW_USER }}/airflow/dags/
             
           rsync -avz \
+          --rsync-path="sudo rsync" \
             dbt/ \
             ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_WORKER_IP }}:/home/${{ secrets.AIRFLOW_USER }}/dbt
 
