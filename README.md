@@ -6,10 +6,22 @@ Upbit WebSocket 스트리밍과 REST 기반 배치 수집을 통해
 실시간 처리와 배치 처리를 의도적으로 분리한 구조로,
 운영 안정성과 장애 격리, 확장성을 고려한 아키텍처를 목표로 합니다.
 
+English summary: Real-time + batch data pipeline with operational alerts and analytics-ready outputs.
 
-> This is a team-built data engineering project that implements a real-time and batch data pipeline using Upbit WebSocket streaming and REST-based batch ingestion.
->  
-> The architecture intentionally separates streaming and batch processing to improve operational stability, fault isolation, and scalability, while supporting real-time anomaly alerts and analytics-ready data.
+---
+
+## 🏗️ Architecture
+
+![Upbit Real-time & Batch Data Pipeline Architecture](docs/architecture/overview.png)
+
+본 프로젝트는 Streaming과 Batch 파이프라인을 명확히 분리하여
+장애 격리, 운영 안정성, 확장성을 중심으로 설계되었습니다.
+
+Streaming 데이터는 Kafka-compatible 플랫폼(Redpanda)을 통해 버퍼링된 후
+Object Storage에 Raw 데이터로 적재됩니다.
+
+Batch 파이프라인은 Airflow 기반으로 RAW → SILVER → GOLD 단계를 순차적으로 처리하며,
+분석 및 알림에 필요한 데이터셋을 생성합니다.
 
 ---
 
@@ -41,7 +53,7 @@ Real-time streaming alerts and analytics pipeline overview
 
 ---
 
-## 🛠 Operational Considerations
+## 🛠 Operational & Reliability
 - Streaming과 Batch 파이프라인은 독립적으로 동작
 - 실시간 Alert Worker(v1)는 systemd 기반으로 운영
 - 서비스 중단 시 Slack 장애 알림 전송
