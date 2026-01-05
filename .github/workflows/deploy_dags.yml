@@ -1,0 +1,122 @@
+name: Deploy Dags
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+    
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.AWS_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.AIRFLOW_CORE_IP }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.AIRFLOW_WORKER_IP }} >> ~/.ssh/known_hosts
+
+      - name: Check DBT Rebuild
+        id: check_rebuild
+        run: |
+          git fetch origin dev --depth=2
+          if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E 'Dockerfile|Dockerfile_Worker|requirements.txt'; then
+            echo "need_rebuild=true" >> $GITHUB_OUTPUT
+          else
+            echo "need_rebuild=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deploy DAGs to Core
+        run: |
+          rsync -avz \
+            --rsync-path="sudo rsync" \
+            airflow/dags/raw/ \
+            airflow/dags/silver/ \
+            airflow/dags/gold/ \
+            airflow/plugins/ \
+            ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_CORE_IP }}:/home/${{ secrets.AIRFLOW_USER }}/airflow/dags/
+
+      - name: Rebuild Core
+        if: steps.check_rebuild.outputs.need_rebuild == 'true'
+        run: |
+          rsync -avz \
+            --rsync-path="sudo rsync" \
+            requirements.txt \
+            Dockerfile \
+            ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_CORE_IP }}:/home/${{ secrets.AIRFLOW_USER }}/airflow/ &&
+
+          ssh ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_CORE_IP }} \
+            "cd /home/${{ secrets.AIRFLOW_USER }}/airflow && \
+            echo 'AIRFLOW__LOGGING__REMOTE_LOGGING=True' > .env && \
+            echo 'AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER=s3://team6-batch/airflow_logs/' >> .env && \
+            echo 'AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID=aws_conn_id' >> .env && \
+            docker compose down && \
+            docker compose up -d --build"
+
+      - name: Deploy DAGs to Worker
+        run: |
+          rsync -avz \
+          --rsync-path="sudo rsync" \
+            airflow/dags/raw/ \
+            airflow/dags/silver/ \
+            airflow/dags/gold/ \
+            airflow/plugins/ \
+            ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_WORKER_IP }}:/home/${{ secrets.AIRFLOW_USER }}/airflow/dags/
+            
+          rsync -avz \
+          --rsync-path="sudo rsync" \
+            dbt/ \
+            ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_WORKER_IP }}:/home/${{ secrets.AIRFLOW_USER }}/dbt
+
+          ssh ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_WORKER_IP }} "
+            sudo chown -R 1000:0 /home/${{ secrets.AIRFLOW_USER }}/dbt &&
+            sudo chmod -R 2775 /home/${{ secrets.AIRFLOW_USER }}/dbt"
+
+      - name: Rebuild Worker
+        if: steps.check_rebuild.outputs.need_rebuild == 'true'
+        run: |
+          rsync -avz \
+            --rsync-path="sudo rsync" \
+            requirements.txt \
+            ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_WORKER_IP }}:/home/${{ secrets.AIRFLOW_USER }}/airflow/ &&
+
+          rsync -avz \
+            --rsync-path="sudo rsync" \
+            Dockerfile_Worker \
+            ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_WORKER_IP }}:/home/${{ secrets.AIRFLOW_USER }}/airflow/Dockerfile &&
+
+          ssh ${{ secrets.AIRFLOW_USER }}@${{ secrets.AIRFLOW_WORKER_IP }} "
+          cd /home/${{ secrets.AIRFLOW_USER }}/airflow && \
+          cat > .env <<EOL
+          AIRFLOW__LOGGING__REMOTE_LOGGING=True
+          AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER=s3://team6-batch/airflow_logs/
+          AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID=aws_conn_id
+          SNOWFLAKE_ACCOUNT=${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER=${{ secrets.SNOWFLAKE_USER }}
+          SNOWFLAKE_PASSWORD=${{ secrets.SNOWFLAKE_PASSWORD }}
+          SNOWFLAKE_ROLE=${{ secrets.SNOWFLAKE_ROLE }}
+          SNOWFLAKE_WAREHOUSE=${{ secrets.SNOWFLAKE_WAREHOUSE }}
+          SNOWFLAKE_DATABASE=${{ secrets.SNOWFLAKE_DATABASE }}
+          SNOWFLAKE_SCHEMA=SILVER
+          EOL
+          docker compose down && \
+          docker compose up -d --build"
+            
+      - name: Slack Notification
+        uses: slackapi/slack-github-action@v2.1.1
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: webhook-trigger
+          payload: |
+                  {
+                    "text": "${{ job.status == 'success' && '✅' || '❌' }} *AWS CD Result*: Github Actions ${{ job.status }}\n
+                    *Author:* ${{ github.actor }}\n
+                    *Repo:* <${{ github.server_url }}/${{ github.repository }}|${{ github.repository }}>\n
+                    *Branch:* <${{ github.server_url }}/${{ github.repository }}/tree/${{ github.ref_name }}|${{ github.ref_name }}>\n
+                    *Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n"
+                  }

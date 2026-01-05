@@ -1,0 +1,10 @@
+websockets
+confluent-kafka
+
+requests
+google-cloud-storage
+
+apache-airflow-providers-snowflake
+apache-airflow-providers-amazon
+
+

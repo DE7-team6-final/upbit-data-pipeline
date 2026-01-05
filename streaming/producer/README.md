@@ -10,3 +10,9 @@ Upbit WebSocket → Kafka(Redpanda) 스트리밍 Producer
 
 ## Run
 python producer.py
+python producer.py
+
+## Requirements
+- Python 3.10+
+- confluent-kafka
+- websockets

@@ -1,0 +1,13 @@
+version: 2
+
+sources:
+  - name: silver
+    database: "{{ env_var('SNOWFLAKE_DATABASE') }}"
+    schema: "{{ env_var('SNOWFLAKE_SCHEMA') }}"
+    tables:
+      - name: SILVER_TICKER    
+      - name: SILVER_CANDLES
+      - name: SILVER_TRADES
+      - name: SILVER_STOCK
+      
+      
