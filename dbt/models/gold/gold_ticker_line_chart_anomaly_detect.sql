@@ -12,7 +12,7 @@ with silver_candles as(
         min(trade_price) as low_price,
         array_agg(trade_price) within group (order by trade_timestamp desc)[0]::float as close_price,
         sum(trade_volume) as volume
-    from {{ ref('silver_ticker')}}
+    from FROM {{ source('silver', 'SILVER_TICKER') }}
 
     {% if is_incremental() %} --최근 2시간 데이터만 증분처리 
         where trade_timestamp >= dateadd(hour, -2, (select max(candle_time) from {{ this }}))

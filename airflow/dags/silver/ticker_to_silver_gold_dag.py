@@ -98,15 +98,7 @@ with DAG(
         """
     )
     
-    run_silver_ticker = BashOperator(
-        task_id='run_silver_ticker',
-        bash_command=(            
-            "cd /opt/dbt && "
-            "source /opt/dbt_venv/bin/activate && " 
-            "dbt run --select silver_ticker"
-            
-        )
-    )
+    
 
     trigger_anomaly_detect = TriggerDagRunOperator(
         task_id='trigger_anomaly_detect_dag',
@@ -120,5 +112,5 @@ with DAG(
         wait_for_completion=False
     )
  
-    load_upbit_data >> run_silver_ticker >> ( trigger_anomaly_detect, trigger_stock_gold)
+    load_upbit_data >> ( trigger_anomaly_detect, trigger_stock_gold )
 
