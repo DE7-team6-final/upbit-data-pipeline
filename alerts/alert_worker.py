@@ -31,7 +31,16 @@ from google.cloud import storage
 # Config (Streaming alert)
 # =========================
 WINDOW_MINUTES = 5
-PRICE_THRESHOLD = 0.02      # ±2.0%
+
+# Asset-aware price thresholds (1-min bar vs 5-min SMA)
+PRICE_THRESHOLDS = {
+    "KRW-BTC": 0.015,  # ±1.5%
+    "KRW-ETH": 0.013,  # ±1.3%
+    "KRW-SOL": 0.011,  # ±1.1%
+    "KRW-XRP": 0.009,  # ±0.9%
+}
+
+DEFAULT_PRICE_THRESHOLD = 0.012  # ±1.2%
 VOLUME_MULTIPLIER = 4.5     # 4.5x
 COOLDOWN_SECONDS = 10 * 60
 POLL_SECONDS = 10
@@ -343,7 +352,8 @@ class AlertWorker:
         price_change = (bar["close_price"] - avg_price) / avg_price
         volume_ratio = bar["volume"] / avg_volume
 
-        price_hit = abs(price_change) >= PRICE_THRESHOLD
+        threshold = PRICE_THRESHOLDS.get(market, DEFAULT_PRICE_THRESHOLD)
+        price_hit = abs(price_change) >= threshold
         volume_hit = volume_ratio >= VOLUME_MULTIPLIER
 
         if price_hit and not self.in_cooldown(market):
