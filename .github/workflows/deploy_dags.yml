@@ -3,7 +3,7 @@ name: Deploy Dags
 on:
   push:
     branches:
-      - dev
+      - main
 
 jobs:
   deploy:
