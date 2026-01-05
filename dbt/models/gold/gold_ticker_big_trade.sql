@@ -4,7 +4,7 @@
 )}}
 
 WITH silver_data AS (
-    SELECT * FROM {{ ref('silver_ticker') }}
+    SELECT * FROM {{ source('silver', 'SILVER_TICKER') }}
     
     {% if is_incremental() %}
     

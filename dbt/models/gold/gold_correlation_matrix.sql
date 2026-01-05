@@ -16,7 +16,7 @@ ticker_returns as (
         AVG(trade_price) as avg_price,
         (avg_price - LAG(avg_price) OVER (PARTITION BY code ORDER BY candle_time)) 
         / NULLIF(LAG(avg_price) OVER (PARTITION BY code ORDER BY candle_time), 0) AS updown_rate
-    FROM {{ ref('silver_ticker') }}
+    FROM {{ source('silver', 'SILVER_TICKER') }}
     GROUP BY 1, 2
 ),
 

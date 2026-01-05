@@ -17,7 +17,7 @@ ticker_1min as (
         DATE_TRUNC('MINUTE', trade_timestamp) as candle_time,
         avg(trade_price) as price,
         sum(trade_volume) as volume
-    from {{ ref('silver_ticker')}}
+    FROM {{ source('silver', 'SILVER_TICKER') }}
     group by 1,2,3,4
 )
 
