@@ -34,7 +34,7 @@ Real-time streaming alerts and analytics pipeline overview
 
 ---
 
-## 🧠 Key Architectural Decisions (ADR)
+## 🧠 Key Design Decisions
 
 본 프로젝트는 단순 기능 구현이 아니라,  
 **운영 안정성과 설명 가능성**을 중심으로 설계 결정을 내렸습니다.
@@ -48,8 +48,8 @@ Real-time streaming alerts and analytics pipeline overview
 - 제한된 리소스를 고려하여 Kafka 대신 **Redpanda(Kafka-compatible)** 선택
 - Streaming Producer와 Consumer를 **물리적으로 분리된 VM**에서 운영
 
-👉 상세한 설계 배경과 트레이드오프는 팀 Notion의  
-[**주요 아키텍처 설계 결정 (ADR)**](https://www.notion.so/ADR-2da6e9180a9680e1b9b0f40a60f161bb?source=copy_link) 문서에 정리되어 있습니다.
+👉 설계 배경과 주요 트레이드오프에 대한 상세 내용은  
+팀 Notion 문서에 참고 자료로 정리되어 있습니다.
 
 ---
 
