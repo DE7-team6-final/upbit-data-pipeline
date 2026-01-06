@@ -17,7 +17,8 @@ with DAG(
     schedule_interval=None,  # 10분마다 실행
     start_date=datetime(2025, 12, 24),
     catchup=False,
-    max_active_runs=1 # 이전 작업 안 끝나면 대기
+    max_active_runs=1, # 이전 작업 안 끝나면 대기
+    tags = ['gold'],
 ) as dag:
 
     # dbt run 실행
