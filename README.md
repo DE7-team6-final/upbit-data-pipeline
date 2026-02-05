@@ -10,6 +10,19 @@ English summary: Real-time + batch data pipeline with operational alerts and ana
 
 ---
 
+## 🔎 Project Summary
+
+- Upbit WebSocket 스트리밍과 REST 배치 수집을 결합한 실시간 + 배치 데이터 파이프라인 구축
+- 일 평균 약 60만 건, 누적 약 1,600만 건 규모의 거래 이벤트 데이터 처리
+- Kafka-compatible Redpanda 기반 스트리밍 파이프라인 운영
+- Consumer 프로세스 중단으로 발생한 약 1시간 데이터 적재 공백 이슈를 로그 및 타임스탬프 기반으로 분석
+- 수동 실행 구조를 systemd 기반 상시 서비스 + 자동 재시작 구조로 개선하여 재발 방지
+- Streaming / Batch 파이프라인을 물리적으로 분리해 장애 격리 및 운영 안정성 확보
+- 교육용 인프라 제약 하에서 멀티 클라우드(AWS + GCP) 환경을 활용한 현실적인 운영 아키텍처 설계
+- 실시간 알림은 관측용(Alerting)으로 한정하고, 배치 기반 요약 알림으로 운영 신뢰성 확보
+
+---
+
 ## 🏗️ Architecture
 
 ![Upbit Real-time & Batch Data Pipeline Architecture](docs/architecture/overview.png)
